@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Гончарная Касса POS</title>
   <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#b45309">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,105 +17,137 @@
     }
   </script>
   <style>
-    body { -webkit-tap-highlight-color: transparent; }
+    body { -webkit-tap-highlight-color: transparent; background-color: #f8f6f0; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans select-none pb-20">
+<body class="text-stone-800 min-h-screen flex flex-col font-sans select-none pb-20">
 
   <!-- ШАПКА -->
-  <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
-    <div class="flex items-center gap-3">
-      <div class="bg-amber-600/20 text-amber-500 p-2 rounded-xl border border-amber-600/30">
-        <i data-lucide="store" class="w-5 h-5"></i>
-      </div>
-      <div>
-        <h1 class="text-sm font-bold leading-tight" id="headerMarketName">Ярмарка Мастеров</h1>
-        <p class="text-xs text-zinc-400 flex items-center gap-1.5" id="headerSub">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="headerEmployeeName">Владелец</span>
-        </p>
-      </div>
-    </div>
-
+  <header class="bg-amber-900 text-amber-50 px-3 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
     <div class="flex items-center gap-2">
-      <!-- Статус облака (Админ) -->
-      <button id="cloudBtn" onclick="openCloudModal()" class="hidden text-xs bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-zinc-700 transition">
-        <span id="cloudDot" class="w-2 h-2 rounded-full bg-zinc-500"></span>
-        <span id="cloudText">Облако</span>
+      <!-- Выбор маркета / выставки -->
+      <button onclick="openEventModal()" class="flex items-center gap-1.5 bg-amber-950/60 hover:bg-amber-950 px-2.5 py-1.5 rounded-xl border border-amber-700/50 transition">
+        <i data-lucide="store" class="w-4 h-4 text-amber-400"></i>
+        <div class="text-left max-w-[120px] sm:max-w-[200px]">
+          <p class="text-[9px] uppercase tracking-wider text-amber-300 font-bold leading-none">МАРКЕТ</p>
+          <p id="headerMarketName" class="text-xs font-semibold truncate leading-tight mt-0.5">Осенний Маркет Ремесел 2026</p>
+        </div>
+        <i data-lucide="chevron-down" class="w-3 h-3 text-amber-300 ml-0.5"></i>
       </button>
 
-      <!-- Блокировка кассы -->
-      <button onclick="lockScreen()" title="Заблокировать кассу" class="p-2 bg-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-700 transition">
+      <!-- Выбор кассира -->
+      <button onclick="openEmployeePickerModal()" class="flex items-center gap-1.5 bg-amber-950/40 hover:bg-amber-950/70 px-2 py-1.5 rounded-xl border border-amber-700/30 transition">
+        <div class="w-5 h-5 rounded-full bg-amber-700 text-[10px] font-bold flex items-center justify-center text-amber-100" id="headerAvatar">В</div>
+        <span id="headerEmployeeName" class="text-xs font-medium max-w-[80px] truncate">Владелец</span>
+        <i data-lucide="chevron-down" class="w-3 h-3 text-amber-300"></i>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1.5">
+      <!-- Блокировка -->
+      <button onclick="lockScreen()" title="Заблокировать кассу" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition">
         <i data-lucide="lock" class="w-4 h-4"></i>
       </button>
 
-      <!-- Кнопка смены режима (Кассир / Админ) -->
-      <button id="roleToggleBtn" onclick="handleRoleToggle()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition flex items-center gap-1">
+      <!-- Статус облака (Клик для настроек) -->
+      <button id="cloudBtn" onclick="openCloudModal()" class="flex items-center gap-1 px-2 py-1.5 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-[11px] font-medium border border-amber-700/40 transition">
+        <span id="cloudDot" class="w-2 h-2 rounded-full bg-stone-400"></span>
+        <span id="cloudText" class="hidden sm:inline">Офлайн</span>
+      </button>
+
+      <!-- Переключатель роли (Админ / Касса) -->
+      <button id="roleToggleBtn" onclick="handleRoleToggle()" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-        <span id="roleToggleText">Вход админа</span>
+        <span id="roleToggleText">Админ</span>
+      </button>
+
+      <!-- Корзина быстрый счетчик -->
+      <button onclick="scrollToCart()" class="flex items-center gap-1 bg-amber-950/60 px-2 py-1.5 rounded-xl border border-amber-700/50 font-bold text-xs text-amber-300">
+        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+        <span id="headerCartTotal">0 ₽</span>
       </button>
     </div>
   </header>
 
-  <!-- СТАТУС ОФЛАЙНА / СИНХРОНИЗАЦИИ -->
-  <div id="syncBanner" class="hidden bg-amber-600/10 border-b border-amber-500/20 px-4 py-1.5 text-xs text-amber-400 text-center">
-    Работа в офлайн-режиме. Продажи сохраняются локально.
-  </div>
+  <!-- СТАТУС БАННЕР -->
+  <div id="syncBanner" class="hidden bg-amber-100 border-b border-amber-300 px-3 py-1 text-center text-xs text-amber-900 font-medium"></div>
 
-  <!-- ОСНОВНОЙ КОНТЕНТ (ВКЛАДКИ) -->
+  <!-- ОСНОВНОЙ КОНТЕНТ -->
   <main class="flex-1 p-3 md:p-6 max-w-7xl w-full mx-auto">
     
-    <!-- 1. ВКЛАДКА КАССА (ДОСТУПНА ВСЕМ) -->
-    <section id="viewCashier" class="space-y-4">
-      <!-- Поиск и фильтры -->
-      <div class="flex gap-2">
-        <div class="relative flex-1">
-          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-zinc-500"></i>
-          <input type="text" id="searchInput" oninput="renderProducts()" placeholder="Поиск товара или артикула..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500">
-        </div>
-        <select id="groupFilter" onchange="renderProducts()" class="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-300 focus:outline-none">
-          <option value="ALL">Все группы</option>
-        </select>
-      </div>
-
-      <!-- Сетка товаров и корзина -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <!-- Витрина (2 колонки на десктопе) -->
-        <div class="lg:col-span-2">
-          <div id="productsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-            <!-- Карточки товаров генерируются JS -->
+    <!-- 1. ВКЛАДКА КАССА -->
+    <section id="viewCashier" class="space-y-3">
+      <!-- Строка поиска и фильтрация -->
+      <div class="space-y-2">
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-stone-400"></i>
+            <input type="text" id="searchInput" oninput="renderProducts()" placeholder="Поиск по названию, коду или штрихкоду..." class="w-full bg-white border border-stone-300 rounded-2xl pl-9 pr-10 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 shadow-sm">
+            <button onclick="toggleBarcodeScanner()" class="absolute right-2.5 top-2.5 text-stone-400 hover:text-amber-700 p-0.5">
+              <i data-lucide="scan-barcode" class="w-5 h-5"></i>
+            </button>
           </div>
         </div>
 
-        <!-- Корзина кассира -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col h-[560px] sticky top-20">
-          <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
-            <h2 class="font-bold flex items-center gap-2">
-              <i data-lucide="shopping-cart" class="w-4 h-4 text-amber-500"></i> Чек продажи
+        <!-- Кнопки групп (Категории) -->
+        <div id="groupButtons" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <button onclick="selectGroup('ALL')" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-amber-900 text-white shadow-sm">Все группы</button>
+          <button onclick="selectGroup('Гончарные изделия')" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Гончарные изделия</button>
+          <button onclick="selectGroup('Керамика')" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Керамика</button>
+          <button onclick="selectGroup('Сувениры')" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Сувениры</button>
+          <button onclick="selectGroup('Посуда')" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Посуда</button>
+        </div>
+
+        <!-- Подфильтр происхождения -->
+        <div class="flex items-center justify-between text-xs text-stone-500 pt-0.5 px-1">
+          <div class="flex items-center gap-1.5">
+            <span>Тип:</span>
+            <button onclick="selectOrigin('ALL')" id="originAll" class="px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium">Все</button>
+            <button onclick="selectOrigin('СВОЕ')" id="originOwn" class="px-2 py-0.5 rounded-md text-stone-600">Свое</button>
+            <button onclick="selectOrigin('ЗАКУПКА')" id="originBuy" class="px-2 py-0.5 rounded-md text-stone-600">Закупка</button>
+          </div>
+          <span id="productsCount" class="text-stone-400">Найдено: 0 шт</span>
+        </div>
+      </div>
+
+      <!-- Витрина и Корзина -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Сетка карточек -->
+        <div class="lg:col-span-2">
+          <div id="productsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+            <!-- Карточки товаров -->
+          </div>
+        </div>
+
+        <!-- Корзина -->
+        <div id="cartCard" class="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col h-[560px] sticky top-16 shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+            <h2 class="font-bold text-stone-800 flex items-center gap-2">
+              <i data-lucide="shopping-cart" class="w-4 h-4 text-amber-700"></i> Чек продажи
             </h2>
-            <button onclick="clearCart()" class="text-xs text-zinc-500 hover:text-red-400 transition">Очистить</button>
+            <button onclick="clearCart()" class="text-xs text-stone-400 hover:text-red-600 transition">Очистить</button>
           </div>
 
           <div id="cartItems" class="flex-1 overflow-y-auto py-2 space-y-2 no-scrollbar">
             <!-- Позиции в чеке -->
           </div>
 
-          <!-- Итого и кнопка расчета -->
-          <div class="pt-3 border-t border-zinc-800 space-y-3">
+          <div class="pt-3 border-t border-stone-100 space-y-3">
             <div class="flex justify-between items-baseline">
-              <span class="text-zinc-400 text-sm">Итого к оплате:</span>
-              <span id="cartTotal" class="text-2xl font-black text-amber-500">0 ₽</span>
+              <span class="text-stone-500 text-sm">Итого к оплате:</span>
+              <span id="cartTotal" class="text-2xl font-black text-amber-800">0 ₽</span>
             </div>
 
+            <!-- Способы оплаты -->
             <div class="grid grid-cols-3 gap-1.5">
-              <button onclick="setPaymentMethod('CASH')" id="payCash" class="pay-btn py-2 text-xs font-semibold rounded-lg bg-zinc-800 border border-amber-500 text-amber-400">Наличные</button>
-              <button onclick="setPaymentMethod('TRANSFER')" id="payTransfer" class="pay-btn py-2 text-xs font-semibold rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400">СБП / Перевод</button>
-              <button onclick="setPaymentMethod('CARD')" id="payCard" class="pay-btn py-2 text-xs font-semibold rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400">Терминал</button>
+              <button onclick="setPaymentMethod('CASH')" id="payCash" class="pay-btn py-2 text-xs font-bold rounded-xl bg-amber-50 border border-amber-600 text-amber-900 shadow-sm">Наличные</button>
+              <button onclick="setPaymentMethod('TRANSFER')" id="payTransfer" class="pay-btn py-2 text-xs font-semibold rounded-xl bg-white border border-stone-200 text-stone-600">СБП / Перевод</button>
+              <button onclick="setPaymentMethod('CARD')" id="payCard" class="pay-btn py-2 text-xs font-semibold rounded-xl bg-white border border-stone-200 text-stone-600">Терминал</button>
             </div>
 
-            <button onclick="checkout()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
+            <button onclick="checkout()" class="w-full py-3.5 bg-amber-700 hover:bg-amber-800 active:scale-[0.99] text-white font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-amber-900/20">
               <i data-lucide="check-circle" class="w-5 h-5"></i> Пробить чек
             </button>
           </div>
@@ -122,227 +155,478 @@
       </div>
     </section>
 
-    <!-- 2. ВКЛАДКА КАТАЛОГ (ТОЛЬКО АДМИНИСТРАТОР) -->
+    <!-- 2. ВКЛАДКА КАТАЛОГ (ДЛЯ АДМИНИСТРАТОРА) -->
     <section id="viewCatalog" class="hidden space-y-4">
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-bold">Управление товарами</h2>
-        <div class="flex gap-2">
-          <button onclick="openProductModal()" class="bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <h2 class="text-lg font-bold text-stone-800">Каталог товаров и склад</h2>
+          <p class="text-xs text-stone-500">Управление номенклатурой, себестоимостью и остатками</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="openProductModal()" class="bg-amber-800 hover:bg-amber-900 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
             <i data-lucide="plus" class="w-4 h-4"></i> Добавить товар
           </button>
+          <label class="bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+            <i data-lucide="images" class="w-4 h-4 text-amber-700"></i> Пакетная загрузка фото
+            <input type="file" id="batchPhotoInput" multiple accept="image/*" class="hidden" onchange="handleBatchPhotos(event)">
+          </label>
         </div>
       </div>
-      <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-zinc-800/50 text-zinc-400 border-b border-zinc-800">
-            <tr>
-              <th class="p-3">Артикул</th>
-              <th class="p-3">Товар</th>
-              <th class="p-3">Группа</th>
-              <th class="p-3 text-right">Остаток</th>
-              <th class="p-3 text-right">Цена</th>
-              <th class="p-3 text-right">Себестоимость</th>
-              <th class="p-3 text-center">Действия</th>
-            </tr>
-          </thead>
-          <tbody id="catalogTableBody" class="divide-y divide-zinc-800">
-            <!-- Строки каталога -->
-          </tbody>
-        </table>
+
+      <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-50 text-stone-500 border-b border-stone-200 font-semibold">
+              <tr>
+                <th class="p-3">Фото</th>
+                <th class="p-3">Артикул</th>
+                <th class="p-3">Наименование</th>
+                <th class="p-3">Группа</th>
+                <th class="p-3 text-right">Остаток</th>
+                <th class="p-3 text-right">Цена</th>
+                <th class="p-3 text-right">Себестоимость</th>
+                <th class="p-3 text-center">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="catalogTableBody" class="divide-y divide-stone-100">
+              <!-- Строки каталога -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
-    <!-- 3. ВКЛАДКА ОТЧЕТЫ И ЖУРНАЛ ЧЕКОВ (ТОЛЬКО АДМИНИСТРАТОР) -->
-    <section id="viewReports" class="hidden space-y-6">
+    <!-- 3. ВКЛАДКА ОТЧЕТЫ (ДЛЯ АДМИНИСТРАТОРА) -->
+    <section id="viewReports" class="hidden space-y-5">
       
-      <!-- Сводные финансовые показатели с учетом возвратов -->
+      <!-- ТОП ПОКАЗАТЕЛИ -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-          <p class="text-xs text-zinc-400">Чистая выручка</p>
-          <p id="statNetRevenue" class="text-xl font-black text-emerald-400 mt-1">0 ₽</p>
-          <p class="text-[10px] text-zinc-500 mt-0.5">с учетом возвратов</p>
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm">
+          <p class="text-xs text-stone-500">Чистая выручка</p>
+          <p id="statNetRevenue" class="text-2xl font-black text-emerald-700 mt-1">0 ₽</p>
+          <p class="text-[10px] text-stone-400 mt-0.5">с учетом возвратов</p>
         </div>
-        <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-          <p class="text-xs text-zinc-400">Возвраты товаров</p>
-          <p id="statRefunds" class="text-xl font-black text-amber-500 mt-1">0 ₽</p>
-          <p id="statRefundsCount" class="text-[10px] text-zinc-500 mt-0.5">0 чеков</p>
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm">
+          <p class="text-xs text-stone-500">Возвраты клиентов</p>
+          <p id="statRefunds" class="text-2xl font-black text-amber-700 mt-1">0 ₽</p>
+          <p id="statRefundsCount" class="text-[10px] text-stone-400 mt-0.5">0 чеков</p>
         </div>
-        <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-          <p class="text-xs text-zinc-400">Ошибочные (Аннулированы)</p>
-          <p id="statCancelledCount" class="text-xl font-black text-zinc-500 mt-1">0 чеков</p>
-          <p class="text-[10px] text-zinc-500 mt-0.5">исключены из кассы</p>
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm">
+          <p class="text-xs text-stone-500">Ошибочные (Аннулированы)</p>
+          <p id="statCancelledCount" class="text-2xl font-black text-stone-500 mt-1">0 чеков</p>
+          <p class="text-[10px] text-stone-400 mt-0.5">исключены из кассы</p>
         </div>
-        <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-          <p class="text-xs text-zinc-400">Чистая прибыль</p>
-          <p id="statNetProfit" class="text-xl font-black text-cyan-400 mt-1">0 ₽</p>
-          <p class="text-[10px] text-zinc-500 mt-0.5">выручка - себестоимость</p>
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm">
+          <p class="text-xs text-stone-500">Чистая маржа (Прибыль)</p>
+          <p id="statNetProfit" class="text-2xl font-black text-cyan-800 mt-1">0 ₽</p>
+          <p class="text-[10px] text-stone-400 mt-0.5">выручка - себестоимость</p>
         </div>
       </div>
 
-      <!-- Журнал чеков -->
-      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+      <!-- ПРОДАЖИ ПО СОТРУДНИКАМ -->
+      <div class="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-stone-800">ПРОДАЖИ ПО СОТРУДНИКАМ</h3>
+            <p class="text-xs text-stone-400">Сводные показатели личной эффективности продавцов</p>
+          </div>
+          <button onclick="openStaffModal()" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-semibold text-stone-700 transition flex items-center gap-1.5">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i> Управление штатом
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="text-stone-400 border-b border-stone-100">
+              <tr>
+                <th class="py-2">Имя</th>
+                <th class="py-2 text-right">Чеков</th>
+                <th class="py-2 text-right">Возвратов</th>
+                <th class="py-2 text-right">Выручка</th>
+              </tr>
+            </thead>
+            <tbody id="employeeStatsBody" class="divide-y divide-stone-50">
+              <!-- Статистика кассиров -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ЖУРНАЛ СОВЕРШЕННЫХ ЧЕКОВ -->
+      <div class="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm space-y-3">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <h3 class="font-bold text-sm flex items-center gap-2">
-            <i data-lucide="receipt" class="w-4 h-4 text-amber-500"></i> Журнал операций и чеков
-          </h3>
-          <div class="flex gap-1.5 text-xs">
-            <button onclick="filterSales('ALL')" id="filterAll" class="px-2.5 py-1 rounded bg-zinc-800 text-zinc-300">Все</button>
-            <button onclick="filterSales('COMPLETED')" id="filterCompleted" class="px-2.5 py-1 rounded bg-zinc-800 text-zinc-400">Успешные</button>
-            <button onclick="filterSales('REFUNDED')" id="filterRefunded" class="px-2.5 py-1 rounded bg-zinc-800 text-amber-400">Возвраты</button>
-            <button onclick="filterSales('CANCELLED')" id="filterCancelled" class="px-2.5 py-1 rounded bg-zinc-800 text-red-400">Ошибочные</button>
+          <div>
+            <h3 class="font-bold text-sm text-stone-800">ЖУРНАЛ СОВЕРШЕННЫХ ЧЕКОВ</h3>
+            <p class="text-xs text-stone-400">Фиксация продаж, отмен и возвратов изделий</p>
+          </div>
+          <div class="flex gap-1 bg-stone-100 p-1 rounded-xl text-xs">
+            <button onclick="filterSales('ALL')" id="fltAll" class="px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800">Все</button>
+            <button onclick="filterSales('COMPLETED')" id="fltCompleted" class="px-2.5 py-1 rounded-lg text-stone-600">Оплачен</button>
+            <button onclick="filterSales('REFUNDED')" id="fltRefunded" class="px-2.5 py-1 rounded-lg text-stone-600">Возврат</button>
+            <button onclick="filterSales('CANCELLED')" id="fltCancelled" class="px-2.5 py-1 rounded-lg text-stone-600">Ошибка</button>
           </div>
         </div>
 
-        <div id="salesList" class="space-y-2 max-h-96 overflow-y-auto no-scrollbar">
-          <!-- Чеки генерируются JS -->
+        <div id="salesList" class="space-y-2.5 max-h-[500px] overflow-y-auto no-scrollbar">
+          <!-- Чеки со всеми кнопками -->
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- НАВИГАЦИОННАЯ ПАНЕЛЬ СНИЗУ (ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА) -->
-  <nav id="adminBottomNav" class="hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-30 px-6 py-2">
+  <!-- НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (ВИДНА ТОЛЬКО АДМИНУ) -->
+  <nav id="adminBottomNav" class="bg-white border-t border-stone-200 fixed bottom-0 left-0 right-0 z-30 px-6 py-2 shadow-lg">
     <div class="max-w-md mx-auto flex justify-around">
-      <button onclick="switchTab('cashier')" class="tab-btn flex flex-col items-center gap-1 text-amber-500" data-tab="cashier">
-        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Касса</span>
+      <button onclick="switchTab('cashier')" class="tab-btn flex flex-col items-center gap-1 text-amber-800 font-bold" data-tab="cashier">
+        <i data-lucide="store" class="w-5 h-5"></i>
+        <span class="text-[11px]">Касса</span>
       </button>
-      <button onclick="switchTab('catalog')" class="tab-btn flex flex-col items-center gap-1 text-zinc-500 hover:text-zinc-300" data-tab="catalog">
-        <i data-lucide="layout-grid" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Каталог</span>
+      <button onclick="switchTab('catalog')" class="tab-btn flex flex-col items-center gap-1 text-stone-400 hover:text-stone-700" data-tab="catalog">
+        <i data-lucide="layers" class="w-5 h-5"></i>
+        <span class="text-[11px]">Каталог</span>
       </button>
-      <button onclick="switchTab('reports')" class="tab-btn flex flex-col items-center gap-1 text-zinc-500 hover:text-zinc-300" data-tab="reports">
-        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Отчеты</span>
+      <button onclick="switchTab('reports')" class="tab-btn flex flex-col items-center gap-1 text-stone-400 hover:text-stone-700" data-tab="reports">
+        <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+        <span class="text-[11px]">Отчеты</span>
       </button>
     </div>
   </nav>
 
-  <!-- МОДАЛЬНОЕ ОКНО ВВОДА PIN-КОДА -->
-  <div id="pinModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-xs text-center space-y-4">
-      <div class="w-12 h-12 bg-amber-500/10 text-amber-500 mx-auto rounded-full flex items-center justify-center">
-        <i data-lucide="key-round" class="w-6 h-6"></i>
+  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВИТЬ / РЕДАКТИРОВАТЬ ТОВАР -->
+  <div id="productModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 id="productModalTitle" class="font-bold text-stone-800 text-sm">Новый товар</h3>
+        <button onclick="closeProductModal()" class="text-stone-400 hover:text-stone-600">✕</button>
       </div>
-      <div>
-        <h3 class="font-bold text-base" id="pinModalTitle">Вход в систему</h3>
-        <p class="text-xs text-zinc-400 mt-1" id="pinModalSub">Введите 4-значный PIN-код</p>
+      <input type="hidden" id="prodEditId">
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-stone-500 mb-1">Наименование изделия *</label>
+          <input type="text" id="prodName" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-500 mb-1">Артикул (SKU)</label>
+            <input type="text" id="prodSku" placeholder="BAL-101" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 uppercase">
+          </div>
+          <div>
+            <label class="block text-stone-500 mb-1">Штрихкод</label>
+            <input type="text" id="prodBarcode" placeholder="460..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-stone-500 mb-1">Группа</label>
+            <select id="prodGroup" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+              <option value="Гончарные изделия">Гончарные изделия</option>
+              <option value="Керамика">Керамика</option>
+              <option value="Посуда">Посуда</option>
+              <option value="Сувениры">Сувениры</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-stone-500 mb-1">Тип изделия</label>
+            <select id="prodOrigin" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+              <option value="СВОЕ">Свое производство</option>
+              <option value="ЗАКУПКА">Закупка</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-stone-500 mb-1">Цена (₽) *</label>
+            <input type="number" id="prodPrice" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 font-bold text-amber-800">
+          </div>
+          <div>
+            <label class="block text-stone-500 mb-1">Себест. (₽)</label>
+            <input type="number" id="prodCost" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+          </div>
+          <div>
+            <label class="block text-stone-500 mb-1">Остаток (шт)</label>
+            <input type="number" id="prodStock" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 font-bold">
+          </div>
+        </div>
+        <div>
+          <label class="block text-stone-500 mb-1">Ссылка на фото (URL) или файл</label>
+          <input type="text" id="prodImageUrl" placeholder="https://... или data:image" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+        </div>
       </div>
-      <input type="password" id="pinInput" maxlength="4" class="w-32 mx-auto text-center tracking-[0.5em] text-2xl font-mono py-2 bg-zinc-950 border border-zinc-700 rounded-xl focus:border-amber-500 focus:outline-none">
-      <div class="grid grid-cols-2 gap-2 pt-2">
-        <button onclick="closePinModal()" class="py-2 bg-zinc-800 rounded-xl text-xs font-semibold text-zinc-400">Отмена</button>
-        <button onclick="submitPin()" class="py-2 bg-amber-600 rounded-xl text-xs font-semibold text-white">Войти</button>
+      <div class="pt-2 flex gap-2">
+        <button onclick="closeProductModal()" class="flex-1 py-2.5 bg-stone-100 text-stone-600 rounded-xl text-xs font-semibold">Отмена</button>
+        <button onclick="saveProductModal()" class="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold shadow-md">Сохранить</button>
       </div>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО ПОДКЛЮЧЕНИЯ ОБЛАКА -->
-  <div id="cloudModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl w-full max-w-sm space-y-4">
-      <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
-        <h3 class="font-bold text-sm flex items-center gap-2">
-          <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i> Настройки Supabase
+  <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР / СОЗДАНИЕ ВЫСТАВКИ -->
+  <div id="eventModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-stone-800 text-sm">Текущая выставка / маркет</h3>
+        <button onclick="closeEventModal()" class="text-stone-400">✕</button>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-xs text-stone-500">Название мероприятия:</label>
+        <input type="text" id="eventInputName" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 font-semibold">
+      </div>
+      <button onclick="saveCurrentEvent()" class="w-full py-2.5 bg-amber-800 text-white rounded-xl text-xs font-bold">Применить</button>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: АВТОРИЗАЦИЯ СОТРУДНИКА (PIN) -->
+  <div id="pinModal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-xs p-5 shadow-2xl text-center space-y-3">
+      <div class="w-12 h-12 bg-amber-100 text-amber-800 mx-auto rounded-full flex items-center justify-center">
+        <i data-lucide="key-round" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-sm text-stone-800" id="pinModalTitle">Вход в систему</h3>
+        <p class="text-xs text-stone-400 mt-0.5" id="pinModalSub">Введите 4-значный PIN-код</p>
+      </div>
+      <input type="password" id="pinInput" maxlength="4" class="w-32 mx-auto text-center tracking-[0.4em] text-2xl font-mono py-2 bg-stone-50 border border-stone-300 rounded-xl focus:border-amber-700 focus:outline-none">
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="closePinModal()" class="py-2 bg-stone-100 rounded-xl text-xs font-semibold text-stone-600">Отмена</button>
+        <button onclick="submitPinAction()" class="py-2 bg-amber-800 rounded-xl text-xs font-bold text-white shadow-md">Войти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР СОТРУДНИКА ИЗ СПИСКА -->
+  <div id="employeePickerModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-xs p-4 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-stone-800 text-xs">Выберите сотрудника</h3>
+        <button onclick="closeEmployeePickerModal()" class="text-stone-400">✕</button>
+      </div>
+      <div id="employeePickerList" class="space-y-1.5 max-h-60 overflow-y-auto">
+        <!-- Список продавцов -->
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: УПРАВЛЕНИЕ ШТАТОМ -->
+  <div id="staffModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-stone-800 text-sm">Штат сотрудников</h3>
+        <button onclick="closeStaffModal()" class="text-stone-400">✕</button>
+      </div>
+      <div id="staffList" class="space-y-2 max-h-60 overflow-y-auto">
+        <!-- Список -->
+      </div>
+      <div class="pt-2 border-t border-stone-100 space-y-2 text-xs">
+        <p class="font-bold text-stone-700">Добавить продавца:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text" id="newStaffName" placeholder="Имя сотрудника" class="bg-stone-50 border border-stone-200 rounded-xl p-2 text-stone-800">
+          <input type="password" id="newStaffPin" maxlength="4" placeholder="PIN (4 цифры)" class="bg-stone-50 border border-stone-200 rounded-xl p-2 text-stone-800 font-mono">
+        </div>
+        <button onclick="addStaffMember()" class="w-full py-2 bg-amber-800 text-white rounded-xl font-bold">Добавить сотрудника</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: НАСТРОЙКИ SUPABASE -->
+  <div id="cloudModal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-100">
+        <h3 class="font-bold text-sm text-stone-800 flex items-center gap-1.5">
+          <i data-lucide="cloud" class="w-4 h-4 text-emerald-600"></i> Подключение Supabase
         </h3>
-        <button onclick="closeCloudModal()" class="text-zinc-500 hover:text-zinc-300">✕</button>
+        <button onclick="closeCloudModal()" class="text-stone-400">✕</button>
       </div>
       <div class="space-y-3 text-xs">
         <div>
-          <label class="text-zinc-400 block mb-1">Project URL:</label>
-          <input type="text" id="supabaseUrlInput" placeholder="https://xyz.supabase.co" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200">
+          <label class="block text-stone-500 mb-1">Project URL:</label>
+          <input type="text" id="supabaseUrlInput" placeholder="https://xyz.supabase.co" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 font-mono text-[11px]">
         </div>
         <div>
-          <label class="text-zinc-400 block mb-1">Anon Public Key:</label>
-          <input type="password" id="supabaseKeyInput" placeholder="eyJhbGciOi..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200">
+          <label class="block text-stone-500 mb-1">Anon Public Key:</label>
+          <input type="password" id="supabaseKeyInput" placeholder="eyJhbGciOi... или sb_publishable_..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 font-mono text-[11px]">
         </div>
+        <p id="cloudTestStatus" class="text-[11px] text-stone-500"></p>
       </div>
-      <div class="space-y-2 pt-2">
-        <button onclick="saveSupabaseConfig()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">Подключить и синхронизировать</button>
-        <button onclick="syncAllToCloud()" class="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition">Выгрузить локальные данные в облако</button>
+      <div class="space-y-2 pt-1">
+        <button onclick="saveSupabaseConfig()" class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-sm">
+          Подключить и проверить связь
+        </button>
+        <button onclick="syncAllToCloud()" class="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">
+          Выгрузить все данные в облако
+        </button>
+        <button onclick="pullAllFromCloud()" class="w-full py-2 bg-stone-50 hover:bg-stone-100 text-stone-500 rounded-xl text-[11px] transition">
+          Стянуть каталог из облака
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    // --- ИНИЦИАЛИЗАЦИЯ И ХРАНИЛИЩЕ ---
+    // --- ПЕРЕМЕННЫЕ И ДАННЫЕ ПО УМОЛЧАНИЮ ---
     let db;
     let supabaseClient = null;
     let currentRole = 'CASHIER'; // 'ADMIN' или 'CASHIER'
-    let currentEmployee = { id: 'emp_1', name: 'Билал (Владелец)', role: 'ADMIN', pin: '1234' };
+    let currentEmployee = { id: 'emp_owner', name: 'Владелец', role: 'ADMIN', pin: '1234' };
+    let currentMarket = 'Осенний Маркет Ремесел 2026';
     let cart = [];
     let paymentMethod = 'CASH';
     let currentSalesFilter = 'ALL';
+    let selectedGroup = 'ALL';
+    let selectedOrigin = 'ALL';
 
-    const defaultProducts = [
-      { id: 'p1', sku: 'BAL-101', name: 'Кувшин классический Балхар', group: 'Посуда', price: 2500, cost_price: 1100, stock: 12 },
-      { id: 'p2', sku: 'BAL-102', name: 'Кружка с лепным орнаментом', group: 'Посуда', price: 900, cost_price: 350, stock: 30 },
-      { id: 'p3', sku: 'BAL-201', name: 'Ваза напольная орнаментальная', group: 'Керамика', price: 4500, cost_price: 2000, stock: 5 },
-      { id: 'p4', sku: 'BAL-301', name: 'Свистулька традиционная', group: 'Сувениры', price: 350, cost_price: 120, stock: 50 }
+    const sampleProducts = [
+      {
+        id: 'p1',
+        sku: 'BAL-101',
+        name: 'Кувшин классический Балхар 2.5л',
+        group: 'Гончарные изделия',
+        origin: 'СВОЕ',
+        price: 3200,
+        cost_price: 1100,
+        stock: 12,
+        image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400&auto=format&fit=crop&q=80',
+        barcode: '460700100101'
+      },
+      {
+        id: 'p2',
+        sku: 'BAL-102',
+        name: 'Кружка с лепным орнаментом «Мох»',
+        group: 'Посуда',
+        origin: 'СВОЕ',
+        price: 1400,
+        cost_price: 450,
+        stock: 25,
+        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=80',
+        barcode: '460700100102'
+      },
+      {
+        id: 'p3',
+        sku: 'BAL-201',
+        name: 'Тарелка десертная «Крапинки» 20 см',
+        group: 'Посуда',
+        origin: 'СВОЕ',
+        price: 1600,
+        cost_price: 520,
+        stock: 18,
+        image: 'https://images.unsplash.com/photo-1590736969955-71cc94801759?w=400&auto=format&fit=crop&q=80',
+        barcode: '460700100201'
+      },
+      {
+        id: 'p4',
+        sku: 'SUV-301',
+        name: 'Магнит керамический «Привет с Ярмарки»',
+        group: 'Сувениры',
+        origin: 'ЗАКУПКА',
+        price: 300,
+        cost_price: 80,
+        stock: 45,
+        image: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400&auto=format&fit=crop&q=80',
+        barcode: '460700100301'
+      }
     ];
 
-    // Открытие локальной IndexedDB
-    const req = indexedDB.open('PotteryPOS_DB', 2);
+    const defaultEmployees = [
+      { id: 'emp_owner', name: 'Владелец', role: 'ADMIN', pin: '1234' },
+      { id: 'emp_anna', name: 'Анна (Продавец)', role: 'CASHIER', pin: '1111' },
+      { id: 'emp_ivan', name: 'Иван (Продавец)', role: 'CASHIER', pin: '2222' }
+    ];
+
+    // --- ИНИЦИАЛИЗАЦИЯ INDEXEDDB ---
+    const req = indexedDB.open('PotteryPOS_MasterDB', 3);
     req.onupgradeneeded = (e) => {
       db = e.target.result;
       if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('sales')) db.createObjectStore('sales', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('employees')) db.createObjectStore('employees', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
     };
     req.onsuccess = (e) => {
       db = e.target.result;
-      initData();
+      seedInitialData();
       initSupabase();
     };
 
-    function initData() {
-      const tx = db.transaction(['products'], 'readonly');
-      const store = tx.objectStore('products');
-      store.getAll().onsuccess = (e) => {
-        if (!e.target.result || e.target.result.length === 0) {
-          const wtx = db.transaction(['products'], 'readwrite');
-          defaultProducts.forEach(p => wtx.objectStore('products').put(p));
-          wtx.oncomplete = () => renderProducts();
-        } else {
-          renderProducts();
+    function seedInitialData() {
+      const tx = db.transaction(['products', 'employees', 'settings'], 'readwrite');
+      const pStore = tx.objectStore('products');
+      const eStore = tx.objectStore('employees');
+      const sStore = tx.objectStore('settings');
+
+      pStore.getAll().onsuccess = (ev) => {
+        if (!ev.target.result || ev.target.result.length === 0) {
+          sampleProducts.forEach(p => pStore.put(p));
         }
       };
-      renderSales();
+      eStore.getAll().onsuccess = (ev) => {
+        if (!ev.target.result || ev.target.result.length === 0) {
+          defaultEmployees.forEach(emp => eStore.put(emp));
+        }
+      };
+      sStore.get('market_name').onsuccess = (ev) => {
+        if (ev.target.result) {
+          currentMarket = ev.target.result.val;
+          document.getElementById('headerMarketName').textContent = currentMarket;
+        }
+      };
+
+      tx.oncomplete = () => {
+        renderProducts();
+        renderSales();
+        updateStaffStats();
+      };
     }
 
-    // --- SUPABASE И ОБЛАКО ---
+    // --- ИНИЦИАЛИЗАЦИЯ SUPABASE ---
     function initSupabase() {
       const url = localStorage.getItem('pos_sb_url');
       const key = localStorage.getItem('pos_sb_key');
       if (url && key && window.supabase) {
-        supabaseClient = window.supabase.createClient(url, key);
-        updateCloudStatus(true);
-        // Реалтайм подписка на чеки
-        supabaseClient.channel('sales-feed')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
-            fetchRemoteSales();
-          }).subscribe();
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          supabaseClient.from('products').select('id', { head: true, count: 'exact' }).then(res => {
+            if (res.error) {
+              setCloudStatusUI(false, 'Ошибка ключа');
+            } else {
+              setCloudStatusUI(true, 'Онлайн');
+              subscribeToRealtime();
+            }
+          }).catch(() => setCloudStatusUI(false, 'Офлайн'));
+        } catch (err) {
+          setCloudStatusUI(false, 'Сбой');
+        }
       } else {
-        updateCloudStatus(false);
+        setCloudStatusUI(false, 'Офлайн');
       }
     }
 
-    function updateCloudStatus(online) {
+    function setCloudStatusUI(online, label) {
       const dot = document.getElementById('cloudDot');
       const txt = document.getElementById('cloudText');
       if (online) {
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-        txt.textContent = 'Облако Онлайн';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        txt.textContent = label || 'Онлайн';
       } else {
-        dot.className = 'w-2 h-2 rounded-full bg-zinc-500';
-        txt.textContent = 'Офлайн';
+        dot.className = 'w-2 h-2 rounded-full bg-stone-400';
+        txt.textContent = label || 'Офлайн';
       }
     }
 
-    // --- АВТОРИЗАЦИЯ И РЕЖИМЫ ---
+    function subscribeToRealtime() {
+      if (!supabaseClient) return;
+      supabaseClient.channel('pos-realtime-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
+          pullAllFromCloud(true);
+        }).subscribe();
+    }
+
+    // --- РОЛИ И ПЕРСОНАЛЬНЫЕ PIN ---
     function handleRoleToggle() {
       if (currentRole === 'CASHIER') {
-        openPinModal('Вход администратора', 'Введите PIN-код админа', '1234', () => {
-          setRole('ADMIN');
+        askPin('Вход администратора', 'Введите PIN владельца (по умолч. 1234)', (pin) => {
+          if (pin === '1234' || pin === currentEmployee.pin) {
+            setRole('ADMIN');
+          } else {
+            alert('Неверный PIN-код администратора!');
+          }
         });
       } else {
         setRole('CASHIER');
@@ -352,8 +636,7 @@
     function setRole(role) {
       currentRole = role;
       const isAdmin = role === 'ADMIN';
-      document.getElementById('roleToggleText').textContent = isAdmin ? 'Выйти в кассу' : 'Вход админа';
-      document.getElementById('cloudBtn').classList.toggle('hidden', !isAdmin);
+      document.getElementById('roleToggleText').textContent = isAdmin ? 'В кассу' : 'Админ';
       document.getElementById('adminBottomNav').classList.toggle('hidden', !isAdmin);
       if (!isAdmin) switchTab('cashier');
       renderProducts();
@@ -361,76 +644,159 @@
     }
 
     function lockScreen() {
-      openPinModal('Касса заблокирована', 'Введите PIN для разблокировки', currentEmployee.pin, () => {});
+      askPin('Касса заблокирована', `Вход: ${currentEmployee.name}`, (pin) => {
+        if (pin === currentEmployee.pin || pin === '1234') {
+          // успешно
+        } else {
+          alert('Неверный PIN!');
+          lockScreen();
+        }
+      });
     }
 
-    function openPinModal(title, sub, targetPin, onSuccess) {
+    let activePinCallback = null;
+    function askPin(title, sub, callback) {
       document.getElementById('pinModalTitle').textContent = title;
       document.getElementById('pinModalSub').textContent = sub;
-      const pinInput = document.getElementById('pinInput');
-      pinInput.value = '';
+      const input = document.getElementById('pinInput');
+      input.value = '';
+      activePinCallback = callback;
       document.getElementById('pinModal').classList.remove('hidden');
-      pinInput.focus();
+      input.focus();
+    }
+    function submitPinAction() {
+      const pin = document.getElementById('pinInput').value;
+      document.getElementById('pinModal').classList.add('hidden');
+      if (activePinCallback) activePinCallback(pin);
+    }
+    function closePinModal() { document.getElementById('pinModal').classList.add('hidden'); }
 
-      window.submitPin = () => {
-        if (pinInput.value === targetPin) {
-          document.getElementById('pinModal').classList.add('hidden');
-          if (onSuccess) onSuccess();
-        } else {
-          alert('Неверный PIN-код!');
-          pinInput.value = '';
-        }
+    // --- ВЫБОР СОТРУДНИКА ---
+    function openEmployeePickerModal() {
+      const tx = db.transaction(['employees'], 'readonly');
+      tx.objectStore('employees').getAll().onsuccess = (e) => {
+        const staff = e.target.result || [];
+        const box = document.getElementById('employeePickerList');
+        box.innerHTML = staff.map(emp => `
+          <button onclick="selectEmployee('${emp.id}')" class="w-full text-left p-2.5 rounded-xl border border-stone-200 hover:bg-amber-50 flex items-center justify-between transition">
+            <span class="font-medium text-xs text-stone-800">${emp.name}</span>
+            <span class="text-[10px] text-stone-400 font-mono">${emp.role === 'ADMIN' ? 'Администратор' : 'Продавец'}</span>
+          </button>
+        `).join('');
+        document.getElementById('employeePickerModal').classList.remove('hidden');
       };
     }
-    function closePinModal() {
-      document.getElementById('pinModal').classList.add('hidden');
+    function closeEmployeePickerModal() { document.getElementById('employeePickerModal').classList.add('hidden'); }
+
+    function selectEmployee(empId) {
+      closeEmployeePickerModal();
+      const tx = db.transaction(['employees'], 'readonly');
+      tx.objectStore('employees').get(empId).onsuccess = (e) => {
+        const emp = e.target.result;
+        if (!emp) return;
+        askPin(`Авторизация: ${emp.name}`, 'Введите личный 4-значный PIN', (pin) => {
+          if (pin === emp.pin || pin === '1234') {
+            currentEmployee = emp;
+            document.getElementById('headerEmployeeName').textContent = emp.name;
+            document.getElementById('headerAvatar').textContent = emp.name.charAt(0);
+            if (emp.role === 'ADMIN') setRole('ADMIN');
+            else setRole('CASHIER');
+          } else {
+            alert('Неверный PIN сотрудника!');
+          }
+        });
+      };
     }
 
-    // --- КАССОВЫЙ ИНТЕРФЕЙС И КОРЗИНА ---
+    // --- ВЫБОР И СОЗДАНИЕ ВЫСТАВКИ ---
+    function openEventModal() {
+      document.getElementById('eventInputName').value = currentMarket;
+      document.getElementById('eventModal').classList.remove('hidden');
+    }
+    function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
+    function saveCurrentEvent() {
+      const val = document.getElementById('eventInputName').value.trim();
+      if (!val) return;
+      currentMarket = val;
+      document.getElementById('headerMarketName').textContent = currentMarket;
+      const tx = db.transaction(['settings'], 'readwrite');
+      tx.objectStore('settings').put({ key: 'market_name', val });
+      closeEventModal();
+    }
+
+    // --- КАТАЛОГ И ВИТРИНА ---
+    function selectGroup(grp) {
+      selectedGroup = grp;
+      document.querySelectorAll('.group-btn').forEach(b => {
+        b.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200';
+      });
+      event.target.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-amber-900 text-white shadow-sm';
+      renderProducts();
+    }
+    function selectOrigin(orig) {
+      selectedOrigin = orig;
+      document.getElementById('originAll').className = orig === 'ALL' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
+      document.getElementById('originOwn').className = orig === 'СВОЕ' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
+      document.getElementById('originBuy').className = orig === 'ЗАКУПКА' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
+      renderProducts();
+    }
+
     function renderProducts() {
       const tx = db.transaction(['products'], 'readonly');
       tx.objectStore('products').getAll().onsuccess = (e) => {
         const products = e.target.result || [];
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const group = document.getElementById('groupFilter').value;
+        const q = document.getElementById('searchInput').value.toLowerCase().trim();
 
         const filtered = products.filter(p => {
-          const mQ = p.name.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query));
-          const mG = group === 'ALL' || p.group === group;
-          return mQ && mG;
+          const matchQ = p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.barcode && p.barcode.includes(q));
+          const matchG = selectedGroup === 'ALL' || p.group === selectedGroup;
+          const matchO = selectedOrigin === 'ALL' || p.origin === selectedOrigin;
+          return matchQ && matchG && matchO;
         });
 
-        const grid = document.getElementById('productsGrid');
-        grid.innerHTML = filtered.map(p => `
-          <div onclick="addToCart('${p.id}')" class="bg-zinc-900 border border-zinc-800 hover:border-amber-500/50 p-3 rounded-xl cursor-pointer active:scale-95 transition flex flex-col justify-between">
-            <div>
-              <div class="flex justify-between items-start gap-1">
-                <span class="text-[10px] text-zinc-500 font-mono">${p.sku || ''}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded ${p.stock > 3 ? 'bg-zinc-800 text-zinc-400' : 'bg-red-500/10 text-red-400'}">${p.stock} шт</span>
-              </div>
-              <h4 class="text-xs font-semibold mt-1 line-clamp-2">${p.name}</h4>
-            </div>
-            <div class="mt-3 flex justify-between items-center">
-              <span class="text-sm font-bold text-amber-500">${p.price} ₽</span>
-              <button class="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-amber-600 hover:text-white transition">
-                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </div>
-        `).join('');
+        document.getElementById('productsCount').textContent = `Найдено: ${filtered.length} шт`;
 
-        // Таблица в каталоге
+        // Витрина кассы
+        const grid = document.getElementById('productsGrid');
+        grid.innerHTML = filtered.map(p => {
+          const imgHtml = p.image 
+            ? `<img src="${p.image}" class="w-full h-28 object-cover rounded-xl mb-2 bg-stone-100" onerror="this.src='https://via.placeholder.com/300x200?text=Керамика'">`
+            : `<div class="w-full h-28 rounded-xl bg-amber-50 flex items-center justify-center text-amber-300 mb-2"><i data-lucide="package" class="w-8 h-8"></i></div>`;
+
+          return `
+            <div onclick="addToCart('${p.id}')" class="bg-white border border-stone-200 hover:border-amber-600 p-2.5 rounded-2xl cursor-pointer active:scale-[0.98] transition flex flex-col justify-between shadow-sm">
+              <div>
+                <div class="relative">
+                  ${imgHtml}
+                  <span class="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${p.origin === 'СВОЕ' ? 'bg-amber-900/80 text-white' : 'bg-stone-800/80 text-white'}">${p.origin || 'СВОЕ'}</span>
+                  <span class="absolute bottom-3 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/90 text-stone-700 shadow-sm">Осталось: ${p.stock}</span>
+                </div>
+                <p class="text-[10px] text-stone-400 font-mono">${p.sku || ''}</p>
+                <h4 class="text-xs font-bold text-stone-800 line-clamp-2 leading-tight mt-0.5">${p.name}</h4>
+              </div>
+              <div class="mt-2 pt-2 border-t border-stone-100 flex justify-between items-center">
+                <span class="text-sm font-black text-amber-800">${p.price} ₽</span>
+                <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs">+</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Таблица в Каталоге
         const tbody = document.getElementById('catalogTableBody');
         tbody.innerHTML = products.map(p => `
-          <tr class="hover:bg-zinc-800/20">
-            <td class="p-3 font-mono text-zinc-500">${p.sku}</td>
-            <td class="p-3 font-semibold">${p.name}</td>
-            <td class="p-3 text-zinc-400">${p.group || '—'}</td>
-            <td class="p-3 text-right font-bold ${p.stock < 5 ? 'text-amber-400' : ''}">${p.stock}</td>
-            <td class="p-3 text-right font-bold text-amber-500">${p.price} ₽</td>
-            <td class="p-3 text-right text-zinc-400">${p.cost_price || 0} ₽</td>
+          <tr class="hover:bg-stone-50 transition">
+            <td class="p-3">
+              <img src="${p.image || 'https://via.placeholder.com/50'}" class="w-9 h-9 object-cover rounded-lg bg-stone-100">
+            </td>
+            <td class="p-3 font-mono text-stone-500 font-semibold">${p.sku || '—'}</td>
+            <td class="p-3 font-bold text-stone-800">${p.name}</td>
+            <td class="p-3 text-stone-500">${p.group || '—'}</td>
+            <td class="p-3 text-right font-bold ${p.stock <= 5 ? 'text-amber-700' : 'text-stone-700'}">${p.stock} шт</td>
+            <td class="p-3 text-right font-black text-amber-900">${p.price} ₽</td>
+            <td class="p-3 text-right text-stone-500">${p.cost_price || 0} ₽</td>
             <td class="p-3 text-center">
-              <button onclick="editProductStock('${p.id}')" class="text-xs text-zinc-400 hover:text-white px-2 py-1 bg-zinc-800 rounded">Остаток</button>
+              <button onclick="editProduct('${p.id}')" class="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold">Правка</button>
             </td>
           </tr>
         `).join('');
@@ -439,18 +805,16 @@
       };
     }
 
-    function addToCart(productId) {
+    // --- КОРЗИНА И ОПЛАТА ---
+    function addToCart(prodId) {
       const tx = db.transaction(['products'], 'readonly');
-      tx.objectStore('products').get(productId).onsuccess = (e) => {
+      tx.objectStore('products').get(prodId).onsuccess = (e) => {
         const prod = e.target.result;
-        if (!prod || prod.stock <= 0) {
-          alert('Товара нет в наличии!');
-          return;
-        }
-        const inCart = cart.find(i => i.id === prod.id);
-        if (inCart) {
-          if (inCart.qty < prod.stock) inCart.qty++;
-          else alert('Достигнут предел остатка на складе!');
+        if (!prod || prod.stock <= 0) return alert('Товара нет в наличии на складе!');
+        const exist = cart.find(i => i.id === prod.id);
+        if (exist) {
+          if (exist.qty < prod.stock) exist.qty++;
+          else alert('Достигнут предел остатка изделия!');
         } else {
           cart.push({ ...prod, qty: 1 });
         }
@@ -461,53 +825,56 @@
     function renderCart() {
       const box = document.getElementById('cartItems');
       if (cart.length === 0) {
-        box.innerHTML = '<div class="text-center text-zinc-600 text-xs py-10">Корзина пуста</div>';
+        box.innerHTML = '<div class="text-center text-stone-400 text-xs py-16">Корзина пуста. Выберите товар на витрине</div>';
         document.getElementById('cartTotal').textContent = '0 ₽';
+        document.getElementById('headerCartTotal').textContent = '0 ₽';
         return;
       }
-
-      let total = 0;
-      box.innerHTML = cart.map((item, idx) => {
-        const cost = item.price * item.qty;
-        total += cost;
+      let sum = 0;
+      box.innerHTML = cart.map((it, idx) => {
+        const lineTotal = it.price * it.qty;
+        sum += lineTotal;
         return `
-          <div class="flex items-center justify-between bg-zinc-950 p-2 rounded-xl text-xs border border-zinc-800/80">
+          <div class="flex items-center justify-between bg-stone-50 p-2.5 rounded-xl border border-stone-200/70 text-xs">
             <div class="flex-1 pr-2">
-              <p class="font-medium truncate">${item.name}</p>
-              <p class="text-[10px] text-amber-500 font-bold">${item.price} ₽ × ${item.qty} = ${cost} ₽</p>
+              <p class="font-bold text-stone-800 leading-tight">${it.name}</p>
+              <p class="text-[11px] text-amber-800 font-bold mt-0.5">${it.price} ₽ × ${it.qty} = ${lineTotal} ₽</p>
             </div>
             <div class="flex items-center gap-1.5">
-              <button onclick="changeQty(${idx}, -1)" class="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center">-</button>
-              <span class="w-4 text-center font-bold">${item.qty}</span>
-              <button onclick="changeQty(${idx}, 1)" class="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center">+</button>
+              <button onclick="stepQty(${idx}, -1)" class="w-6 h-6 rounded bg-stone-200 text-stone-700 font-bold flex items-center justify-center">-</button>
+              <span class="w-4 text-center font-bold text-xs">${it.qty}</span>
+              <button onclick="stepQty(${idx}, 1)" class="w-6 h-6 rounded bg-stone-200 text-stone-700 font-bold flex items-center justify-center">+</button>
             </div>
           </div>
         `;
       }).join('');
-      document.getElementById('cartTotal').textContent = `${total} ₽`;
+
+      document.getElementById('cartTotal').textContent = `${sum} ₽`;
+      document.getElementById('headerCartTotal').textContent = `${sum} ₽`;
     }
 
-    function changeQty(idx, delta) {
-      cart[idx].qty += delta;
+    function stepQty(idx, d) {
+      cart[idx].qty += d;
       if (cart[idx].qty <= 0) cart.splice(idx, 1);
       renderCart();
     }
     function clearCart() { cart = []; renderCart(); }
+    function scrollToCart() { document.getElementById('cartCard').scrollIntoView({ behavior: 'smooth' }); }
+
     function setPaymentMethod(method) {
       paymentMethod = method;
       document.querySelectorAll('.pay-btn').forEach(b => {
-        b.className = 'pay-btn py-2 text-xs font-semibold rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400';
+        b.className = 'pay-btn py-2 text-xs font-semibold rounded-xl bg-white border border-stone-200 text-stone-600';
       });
-      const active = { CASH: 'payCash', TRANSFER: 'payTransfer', CARD: 'payCard' }[method];
-      document.getElementById(active).className = 'pay-btn py-2 text-xs font-semibold rounded-lg bg-zinc-800 border border-amber-500 text-amber-400';
+      const map = { CASH: 'payCash', TRANSFER: 'payTransfer', CARD: 'payCard' };
+      document.getElementById(map[method]).className = 'pay-btn py-2 text-xs font-bold rounded-xl bg-amber-50 border border-amber-600 text-amber-900 shadow-sm';
     }
 
-    // --- ОФОРМЛЕНИЕ ПРОДАЖИ ---
+    // --- ЧЕК И СПИСАНИЕ ---
     function checkout() {
-      if (cart.length === 0) return alert('Добавьте товары в чек!');
-
-      const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
-      const totalCost = cart.reduce((s, i) => s + ((i.cost_price || 0) * i.qty), 0);
+      if (cart.length === 0) return alert('Корзина пуста!');
+      const sum = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+      const cost = cart.reduce((s, i) => s + ((i.cost_price || 0) * i.qty), 0);
       const now = new Date();
 
       const sale = {
@@ -515,27 +882,27 @@
         timestamp: now.toISOString(),
         date_str: now.toLocaleDateString('ru-RU'),
         time_str: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        event_name: currentMarket,
         employee_id: currentEmployee.id,
         employee_name: currentEmployee.name,
         items: [...cart],
-        final_total: total,
-        total_cost: totalCost,
-        profit: total - totalCost,
+        final_total: sum,
+        total_cost: cost,
+        profit: sum - cost,
         payment_method: paymentMethod,
         status: 'COMPLETED',
         status_note: ''
       };
 
-      // 1. Списание со склада локально
+      // 1. Списание со склада
       const pTx = db.transaction(['products'], 'readwrite');
       const pStore = pTx.objectStore('products');
       cart.forEach(item => {
-        pStore.get(item.id).onsuccess = (e) => {
-          const p = e.target.result;
+        pStore.get(item.id).onsuccess = (ev) => {
+          const p = ev.target.result;
           if (p) {
             p.stock = Math.max(0, p.stock - item.qty);
             pStore.put(p);
-            // Если есть облако — обновляем и там
             if (supabaseClient) {
               supabaseClient.from('products').update({ stock: p.stock }).eq('id', p.id).then();
             }
@@ -553,33 +920,29 @@
         renderCart();
         renderProducts();
         renderSales();
-        alert('Чек успешно пробит!');
+        updateStaffStats();
+        alert('Чек успешно проведен!');
       };
     }
 
-    // --- АННУЛИРОВАНИЕ И ВОЗВРАТЫ (ДЛЯ АДМИНИСТРАТОРА) ---
-
-    // 1. Ошибочная продажа
+    // --- ОПЕРАЦИИ АДМИНИСТРАТОРА: ОШИБКА И ВОЗВРАТ ---
     function handleCancelSale(saleId) {
-      if (!confirm('Аннулировать этот чек как ошибочный?\n\n• Чек будет помечен как "Ошибочный".\n• Товары вернутся обратно на склад.\n• Сумма будет исключена из кассы.')) return;
-      processSaleStatusChange(saleId, 'CANCELLED', 'Ошибочная продажа кассира');
+      if (!confirm('Аннулировать этот чек как ОШИБОЧНЫЙ?\n\n• Изделия вернутся на остатки склада.\n• Сумма чека будет исключена из выручки кассы.\n• Чек останется в базе со статусом ОШИБКА.')) return;
+      changeSaleStatus(saleId, 'CANCELLED', 'Ошибочная операция');
     }
 
-    // 2. Возврат от клиента
     function handleRefundSale(saleId) {
-      if (!confirm('Оформить официальный возврат от клиента?\n\n• Чек получит статус "Возврат товара".\n• Товары вернутся обратно на склад.\n• Выручка кассы уменьшится на сумму возврата.')) return;
-      processSaleStatusChange(saleId, 'REFUNDED', 'Возврат от покупателя');
+      if (!confirm('Оформить ВОЗВРАТ ОТ КЛИЕНТА?\n\n• Изделия вернутся на остатки склада.\n• Выручка кассы уменьшится на сумму возврата.\n• Чек получит статус ВОЗВРАТ ТОВАРА.')) return;
+      changeSaleStatus(saleId, 'REFUNDED', 'Возврат товара покупателем');
     }
 
-    function processSaleStatusChange(saleId, newStatus, note) {
+    function changeSaleStatus(saleId, newStatus, note) {
       const sTx = db.transaction(['sales'], 'readwrite');
       const sStore = sTx.objectStore('sales');
 
       sStore.get(saleId).onsuccess = (e) => {
         const sale = e.target.result;
         if (!sale) return;
-
-        // Если чек уже был отменен или возвращен
         if (sale.status === 'CANCELLED' || sale.status === 'REFUNDED') {
           return alert('Этот чек уже был аннулирован или возвращен ранее!');
         }
@@ -589,24 +952,23 @@
         sale.status_updated_at = new Date().toISOString();
         sStore.put(sale);
 
-        // Возвращаем позиции на остатки склада
+        // Возврат остатков на склад
         const pTx = db.transaction(['products'], 'readwrite');
         const pStore = pTx.objectStore('products');
-
         sale.items.forEach(item => {
           pStore.get(item.id).onsuccess = (ev) => {
-            const product = ev.target.result;
-            if (product) {
-              product.stock = (product.stock || 0) + item.qty;
-              pStore.put(product);
+            const p = ev.target.result;
+            if (p) {
+              p.stock = (p.stock || 0) + item.qty;
+              pStore.put(p);
               if (supabaseClient) {
-                supabaseClient.from('products').update({ stock: product.stock }).eq('id', product.id).then();
+                supabaseClient.from('products').update({ stock: p.stock }).eq('id', p.id).then();
               }
             }
           };
         });
 
-        // Отправка статуса в Supabase
+        // Отправка в облако
         if (supabaseClient) {
           supabaseClient.from('sales').update({
             status: newStatus,
@@ -618,108 +980,105 @@
         pTx.oncomplete = () => {
           renderProducts();
           renderSales();
-          alert(newStatus === 'CANCELLED' ? 'Чек успешно аннулирован, остатки возвращены.' : 'Возврат успешно оформлен, остатки возвращены.');
+          updateStaffStats();
+          alert(newStatus === 'CANCELLED' ? 'Чек аннулирован, изделия возвращены на склад.' : 'Возврат проведен, изделия возвращены на склад.');
         };
       };
     }
 
-    // --- ОТРИСОВКА ЖУРНАЛА ЧЕКОВ И АНАЛИТИКИ ---
+    // --- ОТЧЕТЫ И ЖУРНАЛ ЧЕКОВ ---
     function renderSales() {
       const tx = db.transaction(['sales'], 'readonly');
       tx.objectStore('sales').getAll().onsuccess = (e) => {
-        const allSales = (e.target.result || []).reverse();
+        const sales = (e.target.result || []).reverse();
 
-        // Расчет аналитики
-        let completedRev = 0;
-        let refundedRev = 0;
-        let completedCost = 0;
-        let refundedCost = 0;
-        let refundedCount = 0;
-        let cancelledCount = 0;
+        let revCompleted = 0, costCompleted = 0;
+        let revRefunded = 0, costRefunded = 0;
+        let countRefunded = 0, countCancelled = 0;
 
-        allSales.forEach(s => {
+        sales.forEach(s => {
           if (s.status === 'COMPLETED') {
-            completedRev += s.final_total;
-            completedCost += (s.total_cost || 0);
+            revCompleted += s.final_total;
+            costCompleted += (s.total_cost || 0);
           } else if (s.status === 'REFUNDED') {
-            refundedRev += s.final_total;
-            refundedCost += (s.total_cost || 0);
-            refundedCount++;
+            revRefunded += s.final_total;
+            costRefunded += (s.total_cost || 0);
+            countRefunded++;
           } else if (s.status === 'CANCELLED') {
-            cancelledCount++;
+            countCancelled++;
           }
         });
 
-        const netRevenue = completedRev - refundedRev;
-        const netProfit = (completedRev - completedCost) - (refundedRev - refundedCost);
+        const netRev = revCompleted - revRefunded;
+        const netProf = (revCompleted - costCompleted) - (revRefunded - costRefunded);
 
-        document.getElementById('statNetRevenue').textContent = `${netRevenue} ₽`;
-        document.getElementById('statRefunds').textContent = `-${refundedRev} ₽`;
-        document.getElementById('statRefundsCount').textContent = `${refundedCount} чеков`;
-        document.getElementById('statCancelledCount').textContent = `${cancelledCount} чеков`;
-        document.getElementById('statNetProfit').textContent = `${netProfit} ₽`;
+        document.getElementById('statNetRevenue').textContent = `${netRev} ₽`;
+        document.getElementById('statRefunds').textContent = `-${revRefunded} ₽`;
+        document.getElementById('statRefundsCount').textContent = `${countRefunded} чеков`;
+        document.getElementById('statCancelledCount').textContent = `${countCancelled} чеков`;
+        document.getElementById('statNetProfit').textContent = `${netProf} ₽`;
 
-        // Фильтрация списка
-        const filtered = allSales.filter(s => {
+        // Фильтрация
+        const filtered = sales.filter(s => {
           if (currentSalesFilter === 'ALL') return true;
           return s.status === currentSalesFilter;
         });
 
-        const list = document.getElementById('salesList');
+        const box = document.getElementById('salesList');
         if (filtered.length === 0) {
-          list.innerHTML = '<div class="text-zinc-600 text-center py-6 text-xs">Нет операций в этой категории</div>';
+          box.innerHTML = '<div class="text-stone-400 text-center py-8 text-xs">Нет операций в этой категории</div>';
           return;
         }
 
-        list.innerHTML = filtered.map(s => {
+        box.innerHTML = filtered.map(s => {
           const isCompleted = s.status === 'COMPLETED';
           const isRefunded = s.status === 'REFUNDED';
           const isCancelled = s.status === 'CANCELLED';
 
-          // Значки статуса
-          let statusBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 font-bold">ОПЛАЧЕН</span>';
-          let borderStyle = 'border-zinc-800';
-          let titleStyle = 'text-zinc-200';
+          let badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">ОПЛАЧЕН</span>';
+          let border = 'border-stone-200 bg-white';
+          let priceClass = 'text-stone-800';
 
           if (isRefunded) {
-            statusBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 font-bold">ВОЗВРАТ</span>';
-            borderStyle = 'border-amber-500/30 bg-amber-950/10';
+            badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900">ВОЗВРАТ ТОВАРА</span>';
+            border = 'border-amber-200 bg-amber-50/40';
+            priceClass = 'text-amber-800 line-through';
           } else if (isCancelled) {
-            statusBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 font-bold line-through">ОШИБОЧНЫЙ</span>';
-            borderStyle = 'border-red-950/40 bg-zinc-950/50 opacity-60';
-            titleStyle = 'line-through text-zinc-500';
+            badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-600 line-through">ОШИБОЧНЫЙ ЧЕК</span>';
+            border = 'border-stone-200 bg-stone-50 opacity-60';
+            priceClass = 'text-stone-400 line-through';
           }
 
-          const itemsText = s.items.map(i => `${i.name} (×${i.qty})`).join(', ');
+          const itemsStr = s.items.map(i => `${i.name} (×${i.qty})`).join(', ');
 
           return `
-            <div class="p-3 bg-zinc-950 border ${borderStyle} rounded-xl text-xs space-y-2">
+            <div class="p-3.5 rounded-2xl border ${border} shadow-sm text-xs space-y-2">
               <div class="flex justify-between items-start">
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="font-bold font-mono text-zinc-400">#${s.id.slice(-6)}</span>
-                    <span class="text-zinc-500">${s.date_str} ${s.time_str}</span>
-                    ${statusBadge}
+                    <span class="font-mono font-bold text-stone-500">#${s.id.slice(-6)}</span>
+                    <span class="text-stone-400">${s.date_str} ${s.time_str}</span>
+                    ${badge}
                   </div>
-                  <p class="text-[10px] text-zinc-400 mt-0.5">Кассир: <span class="text-zinc-300 font-medium">${s.employee_name}</span> (${s.payment_method})</p>
+                  <p class="text-[11px] text-stone-500 mt-1">Кассир: <b class="text-stone-700">${s.employee_name}</b> | Выставка: ${s.event_name || '—'} | Оплата: ${s.payment_method}</p>
                 </div>
                 <div class="text-right">
-                  <span class="text-sm font-black ${titleStyle} ${isRefunded ? 'text-amber-400' : 'text-zinc-100'}">${s.final_total} ₽</span>
+                  <span class="text-base font-black ${priceClass}">${s.final_total} ₽</span>
                 </div>
               </div>
 
-              <div class="text-[11px] text-zinc-400 border-t border-zinc-900 pt-1.5">
-                ${itemsText}
+              <div class="text-[11px] text-stone-600 bg-stone-50 p-2 rounded-xl">
+                ${itemsStr}
               </div>
 
-              <!-- Кнопки управления чеком (Только для активных чеков и только для Админа) -->
+              <!-- Кнопки управления (только для админа и только для оплаченных чеков) -->
               ${(currentRole === 'ADMIN' && isCompleted) ? `
-                <div class="flex justify-end gap-2 pt-1 border-t border-zinc-900/80">
-                  <button onclick="handleCancelSale('${s.id}')" class="px-2 py-1 rounded bg-zinc-900 hover:bg-red-950 hover:text-red-400 text-zinc-400 text-[10px] font-medium transition flex items-center gap-1 border border-zinc-800">
-                    <i data-lucide="x-circle" class="w-3 h-3"></i> Ошибка (Аннулировать)
+                <div class="flex justify-end gap-2 pt-1 border-t border-stone-100">
+                  <button onclick="handleCancelSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-red-100 text-red-700 font-semibold text-[11px] transition flex items-center gap-1 border border-stone-200">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Ошибочный чек
                   </button>
-                  <button onclick="handleRefundSale('${s.id}')" class="px-2 py-1 rounded bg-zinc-900 hover:bg-amber-950 hover:text-amber-400 text-zinc-400 text-[10px] font-medium transition flex items-center gap-1 border border-zinc-800">
-                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Возврат товара
+                  <button onclick="handleRefundSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold text-[11px] transition flex items-center gap-1 border border-amber-300">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Возврат от клиента
                   </button>
                 </div>
               ` : ''}
@@ -731,32 +1090,210 @@
       };
     }
 
-    function filterSales(filter) {
-      currentSalesFilter = filter;
-      document.querySelectorAll('#filterAll, #filterCompleted, #filterRefunded, #filterCancelled').forEach(b => {
-        b.className = 'px-2.5 py-1 rounded bg-zinc-800 text-zinc-400';
+    function filterSales(flt) {
+      currentSalesFilter = flt;
+      document.querySelectorAll('#fltAll, #fltCompleted, #fltRefunded, #fltCancelled').forEach(b => {
+        b.className = 'px-2.5 py-1 rounded-lg text-stone-600';
       });
-      const map = { ALL: 'filterAll', COMPLETED: 'filterCompleted', REFUNDED: 'filterRefunded', CANCELLED: 'filterCancelled' };
-      document.getElementById(map[filter]).className = 'px-2.5 py-1 rounded bg-amber-600 text-white font-bold';
+      const map = { ALL: 'fltAll', COMPLETED: 'fltCompleted', REFUNDED: 'fltRefunded', CANCELLED: 'fltCancelled' };
+      document.getElementById(map[flt]).className = 'px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800';
       renderSales();
     }
 
-    // --- НАВИГАЦИЯ МЕЖДУ ВКЛАДКАМИ АДМИНИСТРАТОРА ---
-    function switchTab(tab) {
-      document.getElementById('viewCashier').classList.toggle('hidden', tab !== 'cashier');
-      document.getElementById('viewCatalog').classList.toggle('hidden', tab !== 'catalog');
-      document.getElementById('viewReports').classList.toggle('hidden', tab !== 'reports');
+    function updateStaffStats() {
+      const eTx = db.transaction(['employees', 'sales'], 'readonly');
+      eTx.objectStore('employees').getAll().onsuccess = (ev) => {
+        const staff = ev.target.result || [];
+        eTx.objectStore('sales').getAll().onsuccess = (sEv) => {
+          const sales = sEv.target.result || [];
+          const statsBody = document.getElementById('employeeStatsBody');
 
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        const isCurrent = btn.dataset.tab === tab;
-        btn.className = `tab-btn flex flex-col items-center gap-1 ${isCurrent ? 'text-amber-500 font-bold' : 'text-zinc-500 hover:text-zinc-300'}`;
-      });
+          statsBody.innerHTML = staff.map(emp => {
+            const empSales = sales.filter(s => s.employee_id === emp.id);
+            const completed = empSales.filter(s => s.status === 'COMPLETED');
+            const refunded = empSales.filter(s => s.status === 'REFUNDED');
+            const revenue = completed.reduce((a, b) => a + b.final_total, 0) - refunded.reduce((a, b) => a + b.final_total, 0);
+
+            return `
+              <tr class="hover:bg-stone-50">
+                <td class="py-2.5 font-bold text-stone-800">${emp.name}</td>
+                <td class="py-2.5 text-right font-medium text-stone-600">${completed.length}</td>
+                <td class="py-2.5 text-right font-medium text-amber-700">${refunded.length}</td>
+                <td class="py-2.5 text-right font-black text-emerald-800">${revenue} ₽</td>
+              </tr>
+            `;
+          }).join('');
+        };
+      };
     }
 
-    // --- МОДАЛКА НАСТРОЕК ОБЛАКА ---
+    // --- МОДАЛКА: ТОВАР (ДОБАВИТЬ / ПРАВКА) ---
+    function openProductModal(prodId = null) {
+      document.getElementById('prodEditId').value = prodId || '';
+      document.getElementById('productModalTitle').textContent = prodId ? 'Редактирование товара' : 'Новый товар';
+
+      if (prodId) {
+        const tx = db.transaction(['products'], 'readonly');
+        tx.objectStore('products').get(prodId).onsuccess = (e) => {
+          const p = e.target.result;
+          if (!p) return;
+          document.getElementById('prodName').value = p.name;
+          document.getElementById('prodSku').value = p.sku || '';
+          document.getElementById('prodBarcode').value = p.barcode || '';
+          document.getElementById('prodGroup').value = p.group || 'Посуда';
+          document.getElementById('prodOrigin').value = p.origin || 'СВОЕ';
+          document.getElementById('prodPrice').value = p.price;
+          document.getElementById('prodCost').value = p.cost_price || 0;
+          document.getElementById('prodStock').value = p.stock;
+          document.getElementById('prodImageUrl').value = p.image || '';
+          document.getElementById('productModal').classList.remove('hidden');
+        };
+      } else {
+        document.getElementById('prodName').value = '';
+        document.getElementById('prodSku').value = 'BAL-' + Math.floor(100 + Math.random() * 900);
+        document.getElementById('prodBarcode').value = '';
+        document.getElementById('prodPrice').value = '';
+        document.getElementById('prodCost').value = '';
+        document.getElementById('prodStock').value = '10';
+        document.getElementById('prodImageUrl').value = '';
+        document.getElementById('productModal').classList.remove('hidden');
+      }
+    }
+    function editProduct(id) { openProductModal(id); }
+    function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+    function saveProductModal() {
+      const name = document.getElementById('prodName').value.trim();
+      const price = parseFloat(document.getElementById('prodPrice').value);
+      if (!name || isNaN(price)) return alert('Заполните название и цену товара!');
+
+      const editId = document.getElementById('prodEditId').value;
+      const prod = {
+        id: editId || ('prod_' + Date.now()),
+        name,
+        sku: document.getElementById('prodSku').value.trim().toUpperCase(),
+        barcode: document.getElementById('prodBarcode').value.trim(),
+        group: document.getElementById('prodGroup').value,
+        origin: document.getElementById('prodOrigin').value,
+        price,
+        cost_price: parseFloat(document.getElementById('prodCost').value) || 0,
+        stock: parseInt(document.getElementById('prodStock').value) || 0,
+        image: document.getElementById('prodImageUrl').value.trim()
+      };
+
+      const tx = db.transaction(['products'], 'readwrite');
+      tx.objectStore('products').put(prod).onsuccess = () => {
+        if (supabaseClient) supabaseClient.from('products').upsert(prod).then();
+        closeProductModal();
+        renderProducts();
+      };
+    }
+
+    // --- ПАКЕТНАЯ ЗАГРУЗКА ФОТО ---
+    function handleBatchPhotos(event) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
+
+      const tx = db.transaction(['products'], 'readwrite');
+      const store = tx.objectStore('products');
+      store.getAll().onsuccess = (e) => {
+        const products = e.target.result || [];
+        let matched = 0;
+
+        files.forEach(file => {
+          const rawName = file.name.substring(0, file.name.lastIndexOf('.')).toUpperCase();
+          const p = products.find(prod => (prod.sku && prod.sku.toUpperCase() === rawName) || (prod.barcode && prod.barcode === rawName));
+
+          if (p) {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+              compressImage(re.target.result, 400, (compressed) => {
+                p.image = compressed;
+                const wtx = db.transaction(['products'], 'readwrite');
+                wtx.objectStore('products').put(p);
+                if (supabaseClient) supabaseClient.from('products').update({ image: compressed }).eq('id', p.id).then();
+                matched++;
+                renderProducts();
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+        alert(`Обработка фото завершена. Привязано к товарам: ${matched}`);
+      };
+    }
+
+    function compressImage(src, maxSide, callback) {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxSide) { h = Math.round((h * maxSide) / w); w = maxSide; }
+        else if (h > maxSide) { w = Math.round((w * maxSide) / h); h = maxSide; }
+        const cvs = document.createElement('canvas');
+        cvs.width = w; cvs.height = h;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        callback(cvs.toDataURL('image/jpeg', 0.8));
+      };
+    }
+
+    // --- УПРАВЛЕНИЕ ШТАТОМ ---
+    function openStaffModal() {
+      const tx = db.transaction(['employees'], 'readonly');
+      tx.objectStore('employees').getAll().onsuccess = (e) => {
+        const staff = e.target.result || [];
+        const box = document.getElementById('staffList');
+        box.innerHTML = staff.map(emp => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-stone-50 border border-stone-200 text-xs">
+            <div>
+              <p class="font-bold text-stone-800">${emp.name}</p>
+              <p class="text-[10px] text-stone-400">PIN: **** | Роль: ${emp.role}</p>
+            </div>
+            <button onclick="changeStaffPin('${emp.id}')" class="px-2 py-1 bg-white border border-stone-300 rounded text-[11px] font-medium">Сменить PIN</button>
+          </div>
+        `).join('');
+        document.getElementById('staffModal').classList.remove('hidden');
+      };
+    }
+    function closeStaffModal() { document.getElementById('staffModal').classList.add('hidden'); }
+
+    function addStaffMember() {
+      const name = document.getElementById('newStaffName').value.trim();
+      const pin = document.getElementById('newStaffPin').value.trim();
+      if (!name || pin.length !== 4) return alert('Введите имя и 4-значный PIN!');
+      const emp = { id: 'emp_' + Date.now(), name, role: 'CASHIER', pin };
+      const tx = db.transaction(['employees'], 'readwrite');
+      tx.objectStore('employees').put(emp).onsuccess = () => {
+        if (supabaseClient) supabaseClient.from('employees').upsert(emp).then();
+        document.getElementById('newStaffName').value = '';
+        document.getElementById('newStaffPin').value = '';
+        openStaffModal();
+      };
+    }
+
+    function changeStaffPin(id) {
+      const newPin = prompt('Введите новый 4-значный PIN сотрудника:');
+      if (!newPin || newPin.length !== 4) return alert('PIN должен состоять ровно из 4 цифр!');
+      const tx = db.transaction(['employees'], 'readwrite');
+      const store = tx.objectStore('employees');
+      store.get(id).onsuccess = (e) => {
+        const emp = e.target.result;
+        if (emp) {
+          emp.pin = newPin;
+          store.put(emp);
+          if (supabaseClient) supabaseClient.from('employees').update({ pin: newPin }).eq('id', id).then();
+          alert('PIN успешно обновлен!');
+          openStaffModal();
+        }
+      };
+    }
+
+    // --- МОДАЛКА SUPABASE ---
     function openCloudModal() {
       document.getElementById('supabaseUrlInput').value = localStorage.getItem('pos_sb_url') || '';
       document.getElementById('supabaseKeyInput').value = localStorage.getItem('pos_sb_key') || '';
+      document.getElementById('cloudTestStatus').textContent = '';
       document.getElementById('cloudModal').classList.remove('hidden');
     }
     function closeCloudModal() { document.getElementById('cloudModal').classList.add('hidden'); }
@@ -764,26 +1301,92 @@
     function saveSupabaseConfig() {
       const url = document.getElementById('supabaseUrlInput').value.trim();
       const key = document.getElementById('supabaseKeyInput').value.trim();
-      localStorage.setItem('pos_sb_url', url);
-      localStorage.setItem('pos_sb_key', key);
-      closeCloudModal();
-      initSupabase();
-      alert('Настройки сохранены! Попытка подключения...');
+      const statusEl = document.getElementById('cloudTestStatus');
+      statusEl.textContent = 'Проверка подключения к серверу...';
+      statusEl.className = 'text-[11px] text-amber-700';
+
+      try {
+        const testClient = window.supabase.createClient(url, key);
+        testClient.from('products').select('id', { head: true, count: 'exact' }).then(res => {
+          if (res.error) {
+            statusEl.textContent = 'Ошибка: ' + res.error.message;
+            statusEl.className = 'text-[11px] text-red-600';
+          } else {
+            localStorage.setItem('pos_sb_url', url);
+            localStorage.setItem('pos_sb_key', key);
+            supabaseClient = testClient;
+            setCloudStatusUI(true, 'Онлайн');
+            statusEl.textContent = 'Успешно подключено к Supabase!';
+            statusEl.className = 'text-[11px] text-emerald-600 font-bold';
+            setTimeout(() => closeCloudModal(), 800);
+          }
+        }).catch(err => {
+          statusEl.textContent = 'Ошибка сети при обращении к серверу';
+          statusEl.className = 'text-[11px] text-red-600';
+        });
+      } catch (e) {
+        statusEl.textContent = 'Некорректный URL или ключ';
+        statusEl.className = 'text-[11px] text-red-600';
+      }
     }
 
     function syncAllToCloud() {
-      if (!supabaseClient) return alert('Облако не подключено!');
-      const tx = db.transaction(['products', 'sales'], 'readonly');
+      if (!supabaseClient) return alert('Сначала настройте подключение к Supabase!');
+      const tx = db.transaction(['products', 'sales', 'employees'], 'readonly');
       tx.objectStore('products').getAll().onsuccess = (e) => {
         const prods = e.target.result || [];
         supabaseClient.from('products').upsert(prods).then(() => {
           tx.objectStore('sales').getAll().onsuccess = (ev) => {
             const sales = ev.target.result || [];
             supabaseClient.from('sales').upsert(sales).then(() => {
-              alert('Все товары и продажи успешно отправлены в Supabase!');
+              alert('Все данные успешно синхронизированы с облаком!');
             });
           };
         });
+      };
+    }
+
+    function pullAllFromCloud(silent = false) {
+      if (!supabaseClient) return;
+      supabaseClient.from('products').select('*').then(res => {
+        if (!res.error && res.data && res.data.length > 0) {
+          const tx = db.transaction(['products'], 'readwrite');
+          const st = tx.objectStore('products');
+          res.data.forEach(p => st.put(p));
+          tx.oncomplete = () => renderProducts();
+        }
+      });
+      supabaseClient.from('sales').select('*').then(res => {
+        if (!res.error && res.data && res.data.length > 0) {
+          const tx = db.transaction(['sales'], 'readwrite');
+          const st = tx.objectStore('sales');
+          res.data.forEach(s => st.put(s));
+          tx.oncomplete = () => { renderSales(); updateStaffStats(); };
+        }
+      });
+      if (!silent) alert('Каталог и чеки обновлены из облака!');
+    }
+
+    // --- ВКЛАДКИ НАВИГАЦИИ ---
+    function switchTab(tab) {
+      document.getElementById('viewCashier').classList.toggle('hidden', tab !== 'cashier');
+      document.getElementById('viewCatalog').classList.toggle('hidden', tab !== 'catalog');
+      document.getElementById('viewReports').classList.toggle('hidden', tab !== 'reports');
+
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        const active = b.dataset.tab === tab;
+        b.className = `tab-btn flex flex-col items-center gap-1 ${active ? 'text-amber-800 font-bold' : 'text-stone-400 hover:text-stone-700'}`;
+      });
+    }
+
+    function toggleBarcodeScanner() {
+      const code = prompt('Введите или отсканируйте штрихкод:');
+      if (!code) return;
+      const tx = db.transaction(['products'], 'readonly');
+      tx.objectStore('products').getAll().onsuccess = (e) => {
+        const p = (e.target.result || []).find(it => it.barcode === code.trim() || it.sku === code.trim());
+        if (p) addToCart(p.id);
+        else alert('Товар с таким кодом не найден!');
       };
     }
   </script>
