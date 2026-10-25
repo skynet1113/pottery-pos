@@ -6,16 +6,28 @@
   <title>Гончарная Касса POS</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#78350f">
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Lucide Icons (c быстрым CDN jsDelivr) -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- HTML5 QR & Barcode Camera Scanner -->
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- SheetJS для работы с настоящими .xlsx файлами Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.update();
+        }).catch(() => {});
       });
     }
   </script>
+
   <style>
     html, body {
       overflow-x: hidden;
@@ -23,123 +35,161 @@
       max-width: 100vw;
       background-color: #f8f6f0;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    #scannerReader video {
+      border-radius: 14px;
+      object-fit: cover;
+      width: 100% !important;
+    }
   </style>
 </head>
 <body class="text-stone-800 min-h-screen flex flex-col font-sans select-none pb-24">
 
-  <!-- АДАПТИВНАЯ ШАПКА (ПОМЕЩАЕТСЯ И НА СМАРТФОНЕ, И НА ПК) -->
+  <!-- ==================== ШАПКА ПРИЛОЖЕНИЯ ==================== -->
   <header class="bg-amber-900 text-amber-50 sticky top-0 z-30 shadow-md w-full">
-    <div class="max-w-7xl mx-auto px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+    <div class="max-w-7xl mx-auto px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       
-      <!-- Левая часть: Маркет и Кассир -->
-      <div class="flex items-center gap-1.5 min-w-0 flex-1">
-        <button onclick="openEventModal()" class="flex items-center gap-1.5 bg-amber-950/60 hover:bg-amber-950 px-2.5 py-1.5 rounded-xl border border-amber-700/50 transition min-w-0 max-w-[170px] sm:max-w-[240px]">
+      <!-- Ряд 1 на смартфоне (Левая часть на ПК): Маркет и Кассир -->
+      <div class="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto min-w-0">
+        <!-- Кнопка выбора выставки / маркета -->
+        <button onclick="openEventModal()" class="flex items-center gap-2 bg-amber-950/60 hover:bg-amber-950 px-2.5 py-1.5 rounded-xl border border-amber-700/50 transition min-w-0 flex-1 sm:flex-initial sm:max-w-[260px]">
           <i data-lucide="store" class="w-4 h-4 text-amber-400 flex-shrink-0"></i>
-          <div class="text-left min-w-0">
-            <p class="text-[8px] uppercase tracking-wider text-amber-300 font-bold leading-none">МАРКЕТ</p>
-            <p id="headerMarketName" class="text-[11px] font-semibold truncate leading-tight mt-0.5">Осенний Маркет Ремесел 2026</p>
+          <div class="text-left min-w-0 flex-1">
+            <p class="text-[9px] uppercase tracking-wider text-amber-300 font-bold leading-none">МАРКЕТ</p>
+            <p id="headerMarketName" class="text-xs font-bold text-amber-50 truncate leading-tight mt-0.5">Осенний Маркет Ремесел 2026</p>
           </div>
-          <i data-lucide="chevron-down" class="w-3 h-3 text-amber-300 flex-shrink-0"></i>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-amber-300 flex-shrink-0"></i>
         </button>
 
-        <button onclick="openEmployeePickerModal()" class="flex items-center gap-1.5 bg-amber-950/40 hover:bg-amber-950/70 px-2 py-1.5 rounded-xl border border-amber-700/30 transition flex-shrink-0">
-          <div class="w-5 h-5 rounded-full bg-amber-600 text-[10px] font-bold flex items-center justify-center text-white flex-shrink-0" id="headerAvatar">В</div>
-          <span id="headerEmployeeName" class="text-xs font-medium max-w-[75px] sm:max-w-[120px] truncate">Владелец</span>
-          <i data-lucide="chevron-down" class="w-3 h-3 text-amber-300"></i>
+        <!-- Кнопка выбора активного сотрудника -->
+        <button onclick="openEmployeePickerModal()" class="flex items-center gap-1.5 bg-amber-950/50 hover:bg-amber-950 px-2.5 py-1.5 rounded-xl border border-amber-700/40 transition flex-shrink-0">
+          <div class="w-5 h-5 rounded-full bg-amber-600 text-[10px] font-black flex items-center justify-center text-white flex-shrink-0" id="headerAvatar">В</div>
+          <span id="headerEmployeeName" class="text-xs font-semibold max-w-[95px] sm:max-w-[130px] truncate">Владелец</span>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-amber-300 flex-shrink-0"></i>
         </button>
       </div>
 
-      <!-- Правая часть: Управление и Корзина -->
-      <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button onclick="lockScreen()" title="Заблокировать кассу" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition">
-          <i data-lucide="lock" class="w-4 h-4"></i>
-        </button>
+      <!-- Ряд 2 на смартфоне (Правая часть на ПК): Инструменты, Облако, Роль и Корзина -->
+      <div class="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto pt-1 sm:pt-0 border-t border-amber-800/60 sm:border-0">
+        <div class="flex items-center gap-1.5">
+          <!-- Сканер штрихкодов камерой -->
+          <button onclick="openScannerModal()" title="Сканировать штрихкод камерой" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition flex items-center gap-1">
+            <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+            <span class="text-[11px] font-medium hidden md:inline">Камера</span>
+          </button>
 
-        <button id="cloudBtn" onclick="openCloudModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-[11px] font-medium border border-amber-700/40 transition">
-          <span id="cloudDot" class="w-2 h-2 rounded-full bg-stone-400"></span>
-          <span id="cloudText" class="hidden md:inline">Офлайн</span>
-        </button>
+          <!-- Блокировка экрана -->
+          <button onclick="lockScreen()" title="Заблокировать кассу" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition">
+            <i data-lucide="lock" class="w-4 h-4"></i>
+          </button>
 
-        <button id="roleToggleBtn" onclick="handleRoleToggle()" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition">
-          <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-          <span id="roleToggleText">В кассу</span>
-        </button>
+          <!-- Индикатор и настройки Supabase -->
+          <button id="cloudBtn" onclick="openCloudModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-[11px] font-medium border border-amber-700/40 transition">
+            <span id="cloudDot" class="w-2 h-2 rounded-full bg-stone-400 flex-shrink-0"></span>
+            <span id="cloudText" class="truncate max-w-[70px]">Офлайн</span>
+          </button>
+        </div>
 
-        <button onclick="scrollToCart()" class="flex items-center gap-1 bg-amber-950/60 px-2.5 py-1.5 rounded-xl border border-amber-700/50 font-bold text-xs text-amber-300">
-          <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
-          <span id="headerCartTotal">0 ₽</span>
-        </button>
+        <div class="flex items-center gap-1.5">
+          <!-- Переключатель режима: Админ / В кассу -->
+          <button id="roleToggleBtn" onclick="handleRoleToggle()" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition">
+            <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+            <span id="roleToggleText">В кассу</span>
+          </button>
+
+          <!-- Сумма корзины -->
+          <button onclick="scrollToCart()" class="flex items-center gap-1.5 bg-amber-950/70 hover:bg-amber-950 px-3 py-1.5 rounded-xl border border-amber-600/50 font-black text-xs text-amber-300 shadow-sm">
+            <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
+            <span id="headerCartTotal">0 ₽</span>
+          </button>
+        </div>
       </div>
 
     </div>
   </header>
 
-  <!-- ОСНОВНОЙ КОНТЕНТ -->
+  <!-- ==================== ОСНОВНОЙ КОНТЕНТ ==================== -->
   <main class="flex-1 p-3 md:p-6 max-w-7xl w-full mx-auto overflow-x-hidden">
     
-    <!-- 1. ВКЛАДКА КАССА -->
+    <!-- ==================== 1. ВКЛАДКА КАССА ==================== -->
     <section id="viewCashier" class="space-y-3">
-      <div class="space-y-2">
-        <div class="relative w-full">
-          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-stone-400"></i>
-          <input type="text" id="searchInput" oninput="renderProducts()" placeholder="Поиск по названию, коду или штрихкоду..." class="w-full bg-white border border-stone-300 rounded-2xl pl-10 pr-10 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-amber-600 shadow-sm">
-          <button onclick="toggleBarcodeScanner()" class="absolute right-3 top-2.5 text-stone-400 hover:text-amber-700">
-            <i data-lucide="scan-barcode" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <div id="groupButtons" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          <button onclick="selectGroup('ALL', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-amber-900 text-white shadow-sm">Все группы</button>
-          <button onclick="selectGroup('Гончарные изделия', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Гончарные изделия</button>
-          <button onclick="selectGroup('Посуда', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Посуда</button>
-          <button onclick="selectGroup('Керамика', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Керамика</button>
-          <button onclick="selectGroup('Сувениры', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200">Сувениры</button>
-        </div>
-
-        <div class="flex items-center justify-between text-xs text-stone-500 px-1">
-          <div class="flex items-center gap-1.5">
-            <span>Тип:</span>
-            <button onclick="selectOrigin('ALL')" id="originAll" class="px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium">Все</button>
-            <button onclick="selectOrigin('СВОЕ')" id="originOwn" class="px-2 py-0.5 rounded-md text-stone-600">Свое</button>
-            <button onclick="selectOrigin('ЗАКУПКА')" id="originBuy" class="px-2 py-0.5 rounded-md text-stone-600">Закупка</button>
+      <!-- Панель поиска и фильтрации -->
+      <div class="bg-white p-3 rounded-2xl border border-stone-200 shadow-sm space-y-2.5">
+        <div class="relative w-full flex items-center">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 text-stone-400 pointer-events-none"></i>
+          <input 
+            type="text" 
+            id="searchInput" 
+            oninput="renderProducts()" 
+            placeholder="Поиск по названию, коду или штрихкоду..." 
+            class="w-full bg-stone-50 border border-stone-200 rounded-xl pl-10 pr-20 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:bg-white focus:border-amber-600 transition"
+          >
+          <div class="absolute right-2 flex items-center gap-1">
+            <button id="clearSearchBtn" onclick="clearSearchInput()" class="hidden p-1.5 text-stone-400 hover:text-stone-600">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openScannerModal()" title="Сканировать штрихкод камерой" class="p-1.5 bg-amber-100/80 hover:bg-amber-200 text-amber-900 rounded-lg transition">
+              <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+            </button>
           </div>
-          <span id="productsCount" class="text-stone-400">Найдено: 0 шт</span>
+        </div>
+
+        <!-- Фильтр по группам товаров -->
+        <div id="groupButtons" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <button onclick="selectGroup('ALL', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-900 text-white shadow-sm">Все группы</button>
+          <button onclick="selectGroup('Гончарные изделия', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-stone-100 text-stone-600 hover:bg-stone-200">Гончарные изделия</button>
+          <button onclick="selectGroup('Посуда', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-stone-100 text-stone-600 hover:bg-stone-200">Посуда</button>
+          <button onclick="selectGroup('Керамика', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-stone-100 text-stone-600 hover:bg-stone-200">Керамика</button>
+          <button onclick="selectGroup('Сувениры', this)" class="group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-stone-100 text-stone-600 hover:bg-stone-200">Сувениры</button>
+        </div>
+
+        <!-- Фильтр: Свое / Закупка -->
+        <div class="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-100">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-stone-400">Тип:</span>
+            <button onclick="selectOrigin('ALL')" id="originAll" class="px-2.5 py-0.5 rounded-lg bg-amber-800 text-white font-bold text-[11px]">Все</button>
+            <button onclick="selectOrigin('СВОЕ')" id="originOwn" class="px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 font-medium text-[11px]">Свое</button>
+            <button onclick="selectOrigin('ЗАКУПКА')" id="originBuy" class="px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 font-medium text-[11px]">Закупка</button>
+          </div>
+          <span id="productsCount" class="text-[11px] text-stone-400 font-semibold">Найдено: 0 шт</span>
         </div>
       </div>
 
+      <!-- Сетка витрины и Чек продажи -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <!-- Карточки товаров -->
         <div class="lg:col-span-2">
           <div id="productsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5"></div>
         </div>
 
-        <!-- Корзина -->
-        <div id="cartCard" class="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col lg:sticky lg:top-20 shadow-sm">
+        <!-- Корзина (Чек продажи) -->
+        <div id="cartCard" class="bg-white border border-stone-200 rounded-2xl p-4 flex flex-col lg:sticky lg:top-24 shadow-sm">
           <div class="flex items-center justify-between pb-3 border-b border-stone-100">
-            <h2 class="font-bold text-stone-800 flex items-center gap-2">
+            <h2 class="font-bold text-stone-800 flex items-center gap-2 text-sm">
               <i data-lucide="shopping-cart" class="w-4 h-4 text-amber-700"></i> Чек продажи
             </h2>
-            <button onclick="clearCart()" class="text-xs text-stone-400 hover:text-red-600 transition">Очистить</button>
+            <button onclick="clearCart()" class="text-xs text-stone-400 hover:text-red-600 font-medium transition">Очистить</button>
           </div>
 
           <div id="cartItems" class="max-h-72 overflow-y-auto py-2 space-y-2 no-scrollbar"></div>
 
-          <!-- Скидка -->
-          <div class="py-2 border-t border-stone-100 flex items-center justify-between text-xs">
-            <span class="text-stone-500">Скидка:</span>
-            <div class="flex gap-1">
-              <button onclick="setDiscount(0)" id="disc0" class="disc-btn px-2 py-0.5 rounded bg-amber-800 text-white font-bold">0%</button>
-              <button onclick="setDiscount(5)" id="disc5" class="disc-btn px-2 py-0.5 rounded bg-stone-100 text-stone-600">5%</button>
-              <button onclick="setDiscount(10)" id="disc10" class="disc-btn px-2 py-0.5 rounded bg-stone-100 text-stone-600">10%</button>
-              <button onclick="setDiscount(15)" id="disc15" class="disc-btn px-2 py-0.5 rounded bg-stone-100 text-stone-600">15%</button>
+          <!-- Быстрая скидка или ручной процент -->
+          <div class="py-2.5 border-t border-stone-100 flex items-center justify-between text-xs">
+            <span class="text-stone-500 font-medium">Скидка:</span>
+            <div class="flex items-center gap-1">
+              <button onclick="setDiscount(0)" id="disc0" class="disc-btn px-2 py-0.5 rounded-lg bg-amber-800 text-white font-bold">0%</button>
+              <button onclick="setDiscount(5)" id="disc5" class="disc-btn px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600">5%</button>
+              <button onclick="setDiscount(10)" id="disc10" class="disc-btn px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600">10%</button>
+              <button onclick="setDiscount(15)" id="disc15" class="disc-btn px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600">15%</button>
             </div>
           </div>
 
           <div class="pt-3 border-t border-stone-100 space-y-3">
             <div class="flex justify-between items-baseline">
-              <span class="text-stone-500 text-sm">Итого к оплате:</span>
+              <span class="text-stone-500 text-sm font-medium">Итого к оплате:</span>
               <span id="cartTotal" class="text-2xl font-black text-amber-800">0 ₽</span>
             </div>
 
@@ -157,27 +207,50 @@
       </div>
     </section>
 
-    <!-- 2. ВКЛАДКА КАТАЛОГ -->
+    <!-- ==================== 2. ВКЛАДКА КАТАЛОГ ==================== -->
     <section id="viewCatalog" class="hidden space-y-4">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <div>
-          <h2 class="text-lg font-bold text-stone-800">Каталог товаров и склад</h2>
-          <p class="text-xs text-stone-500">Управление номенклатурой, себестоимостью и остатками</p>
+      <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm space-y-3">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+          <div>
+            <h2 class="text-base font-bold text-stone-800">Каталог товаров и склад</h2>
+            <p class="text-xs text-stone-500">Управление номенклатурой, себестоимостью, фото и остатками</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openProductModal()" class="bg-amber-800 hover:bg-amber-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="plus" class="w-4 h-4"></i> Добавить товар
+            </button>
+            <label class="bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-900 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
+              <i data-lucide="images" class="w-4 h-4 text-amber-700"></i> Пакетная загрузка фото
+              <input type="file" multiple accept="image/*" class="hidden" onchange="handleBatchPhotos(event)">
+            </label>
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="openProductModal()" class="bg-amber-800 hover:bg-amber-900 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-            <i data-lucide="plus" class="w-4 h-4"></i> Добавить товар
-          </button>
-          <label class="bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
-            <i data-lucide="images" class="w-4 h-4 text-amber-700"></i> Пакетная загрузка фото
-            <input type="file" multiple accept="image/*" class="hidden" onchange="handleBatchPhotos(event)">
-          </label>
-          <button onclick="downloadCatalogTemplate()" class="bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm">
-            <i data-lucide="download" class="w-4 h-4"></i> Шаблон CSV
-          </button>
+
+        <!-- Работа с таблицами Excel / CSV и резервным копированием -->
+        <div class="pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="downloadCatalogTemplate()" class="bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Шаблон Excel / CSV
+            </button>
+            <label class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i> Импорт из Excel / CSV
+              <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleCatalogFileImport(event)">
+            </label>
+          </div>
+
+          <div class="flex items-center gap-3 text-[11px]">
+            <button onclick="exportJsonBackup()" class="text-amber-800 hover:underline font-semibold flex items-center gap-1">
+              <i data-lucide="hard-drive-download" class="w-3.5 h-3.5"></i> Бэкап JSON
+            </button>
+            <label class="text-amber-800 hover:underline font-semibold flex items-center gap-1 cursor-pointer">
+              <i data-lucide="hard-drive-upload" class="w-3.5 h-3.5"></i> Восстановить JSON
+              <input type="file" accept=".json" class="hidden" onchange="importJsonBackup(event)">
+            </label>
+          </div>
         </div>
       </div>
 
+      <!-- Таблица товаров -->
       <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
@@ -199,10 +272,45 @@
       </div>
     </section>
 
-    <!-- 3. ВКЛАДКА ОТЧЕТЫ -->
-    <section id="viewReports" class="hidden space-y-5">
+    <!-- ==================== 3. ВКЛАДКА ОТЧЕТЫ ==================== -->
+    <section id="viewReports" class="hidden space-y-4">
       
-      <!-- Сводные карточки -->
+      <!-- Панель фильтров отчета и выгрузки -->
+      <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-stone-800">Финансовая аналитика и журнал чеков</h2>
+            <p class="text-xs text-stone-400">Контроль выручки, прибыли, отмен и возвратов</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="exportTo1C()" class="px-3 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Выгрузка для 1С
+            </button>
+            <button onclick="exportSalesCSV()" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+              <i data-lucide="download" class="w-4 h-4"></i> Скачать отчет (.xlsx / .csv)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-xs">
+          <div class="flex items-center gap-2 bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl">
+            <i data-lucide="calendar" class="w-4 h-4 text-amber-700 flex-shrink-0"></i>
+            <span class="text-stone-500">Маркет:</span>
+            <select id="reportEventFilter" onchange="renderSales()" class="w-full bg-transparent font-bold text-stone-800 focus:outline-none">
+              <option value="ALL">Все мероприятия</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2 bg-stone-50 border border-stone-200 px-3 py-2 rounded-xl">
+            <i data-lucide="user" class="w-4 h-4 text-amber-700 flex-shrink-0"></i>
+            <span class="text-stone-500">Кассир:</span>
+            <select id="reportEmployeeFilter" onchange="renderSales()" class="w-full bg-transparent font-bold text-stone-800 focus:outline-none">
+              <option value="ALL">Все сотрудники</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Сводные KPI карточки -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm">
           <p class="text-xs text-stone-500">Чистая выручка</p>
@@ -226,19 +334,35 @@
         </div>
       </div>
 
-      <!-- Кнопки экспорта для 1С и Excel -->
-      <div class="flex flex-wrap gap-2">
-        <button onclick="exportTo1C()" class="px-3.5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
-          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Выгрузка для 1С (CSV)
-        </button>
-        <button onclick="exportSalesCSV()" class="px-3.5 py-2 bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm">
-          <i data-lucide="download" class="w-4 h-4"></i> Экспорт журнала чеков
-        </button>
+      <!-- Структура оплат и Топ продаж на маркете -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm space-y-2.5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">СТРУКТУРА ОПЛАТ (АКТИВНЫЕ ЧЕКИ)</h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between py-1 border-b border-stone-50">
+              <span class="flex items-center gap-2 text-stone-600"><i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i> Наличные</span>
+              <span id="payStatCash" class="font-bold text-stone-900">0 ₽</span>
+            </div>
+            <div class="flex items-center justify-between py-1 border-b border-stone-50">
+              <span class="flex items-center gap-2 text-stone-600"><i data-lucide="smartphone" class="w-4 h-4 text-sky-600"></i> СБП / Перевод</span>
+              <span id="payStatTransfer" class="font-bold text-stone-900">0 ₽</span>
+            </div>
+            <div class="flex items-center justify-between py-1">
+              <span class="flex items-center gap-2 text-stone-600"><i data-lucide="credit-card" class="w-4 h-4 text-purple-600"></i> Терминал / Карта</span>
+              <span id="payStatCard" class="font-bold text-stone-900">0 ₽</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-stone-200 p-4 rounded-2xl shadow-sm space-y-2.5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">ТОП ПРОДАЖ НА МАРКЕТЕ</h3>
+          <div id="topProductsList" class="space-y-1.5 text-xs"></div>
+        </div>
       </div>
 
       <!-- ПРОДАЖИ ПО СОТРУДНИКАМ -->
       <div class="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h3 class="font-bold text-sm text-stone-800">ПРОДАЖИ ПО СОТРУДНИКАМ</h3>
             <p class="text-xs text-stone-400">Сводные показатели личной эффективности продавцов</p>
@@ -268,13 +392,13 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div>
             <h3 class="font-bold text-sm text-stone-800">ЖУРНАЛ СОВЕРШЕННЫХ ЧЕКОВ</h3>
-            <p class="text-xs text-stone-400">Фиксация продаж, отмен и возвратов изделий</p>
+            <p class="text-xs text-stone-400">Фиксация продаж, отмен ошибочных чеков и возвратов от клиентов</p>
           </div>
-          <div class="flex gap-1 bg-stone-100 p-1 rounded-xl text-xs">
-            <button onclick="filterSales('ALL')" id="fltAll" class="px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800">Все</button>
-            <button onclick="filterSales('COMPLETED')" id="fltCompleted" class="px-2.5 py-1 rounded-lg text-stone-600">Оплачен</button>
-            <button onclick="filterSales('REFUNDED')" id="fltRefunded" class="px-2.5 py-1 rounded-lg text-stone-600">Возврат</button>
-            <button onclick="filterSales('CANCELLED')" id="fltCancelled" class="px-2.5 py-1 rounded-lg text-stone-600">Ошибка</button>
+          <div class="flex flex-wrap gap-1 bg-stone-100 p-1 rounded-xl text-xs w-full sm:w-auto">
+            <button onclick="filterSales('ALL')" id="fltAll" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800">Все</button>
+            <button onclick="filterSales('COMPLETED')" id="fltCompleted" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-lg text-stone-600">Оплачен</button>
+            <button onclick="filterSales('REFUNDED')" id="fltRefunded" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-lg text-stone-600">Возврат</button>
+            <button onclick="filterSales('CANCELLED')" id="fltCancelled" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-lg text-stone-600">Ошибка</button>
           </div>
         </div>
 
@@ -284,7 +408,7 @@
 
   </main>
 
-  <!-- НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (ВИДНА АДМИНИСТРАТОРУ) -->
+  <!-- ==================== НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (АДМИН) ==================== -->
   <nav id="adminBottomNav" class="bg-white border-t border-stone-200 fixed bottom-0 left-0 right-0 z-30 px-6 py-2 shadow-lg">
     <div class="max-w-md mx-auto flex justify-around">
       <button onclick="switchTab('cashier')" class="tab-btn flex flex-col items-center gap-1 text-amber-800 font-bold" data-tab="cashier">
@@ -302,7 +426,37 @@
     </div>
   </nav>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ТОВАР -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: СКАНЕР ШТРИХКОДОВ КАМЕРОЙ ==================== -->
+  <div id="scannerModal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+      <div class="p-3.5 bg-amber-900 text-amber-50 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <i data-lucide="scan-barcode" class="w-5 h-5 text-amber-300"></i>
+          <span class="font-bold text-sm">Сканирование штрихкода</span>
+        </div>
+        <button onclick="closeScannerModal()" class="w-7 h-7 rounded-full bg-amber-950/60 text-amber-200 flex items-center justify-center hover:text-white">✕</button>
+      </div>
+
+      <div class="p-3 bg-stone-950 flex flex-col items-center justify-center min-h-[240px]">
+        <div id="scannerReader" class="w-full overflow-hidden rounded-2xl"></div>
+        <p id="scannerStatusMsg" class="text-[11px] text-stone-300 text-center mt-2">
+          Наведите камеру смартфона на штрихкод или QR-код товара
+        </p>
+      </div>
+
+      <div class="p-4 bg-white space-y-2.5 border-t border-stone-100">
+        <label class="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Или введите штрихкод / артикул вручную:</label>
+        <div class="flex gap-2">
+          <input type="text" id="manualBarcodeField" placeholder="Например: POT-001 или 4607..." class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-700">
+          <button onclick="submitManualBarcodeField()" class="bg-amber-800 hover:bg-amber-900 text-white px-4 py-2 rounded-xl text-xs font-bold">
+            Найти
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ТОВАР ==================== -->
   <div id="productModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -313,16 +467,19 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block text-stone-500 mb-1">Наименование изделия *</label>
-          <input type="text" id="prodName" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+          <input type="text" id="prodName" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 font-medium">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-stone-500 mb-1">Артикул (SKU)</label>
-            <input type="text" id="prodSku" placeholder="POT-001" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 uppercase">
+            <input type="text" id="prodSku" placeholder="POT-001" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 uppercase font-mono">
           </div>
           <div>
             <label class="block text-stone-500 mb-1">Штрихкод</label>
-            <input type="text" id="prodBarcode" placeholder="460..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800">
+            <div class="flex gap-1">
+              <input type="text" id="prodBarcode" placeholder="460..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 font-mono">
+              <button type="button" onclick="generateProductBarcode()" title="Сгенерировать штрихкод" class="px-2 bg-stone-100 hover:bg-stone-200 rounded-xl text-stone-600 font-bold">⚡</button>
+            </div>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -358,34 +515,41 @@
           </div>
         </div>
         <div>
-          <label class="block text-stone-500 mb-1">Ссылка на фото (URL) или выбор файла</label>
+          <label class="block text-stone-500 mb-1">Ссылка на фото (URL) или выбор файла с телефона</label>
           <input type="text" id="prodImageUrl" placeholder="https://..." class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-stone-800 mb-1.5">
           <input type="file" accept="image/*" onchange="handleSinglePhoto(event)" class="text-[11px] text-stone-500">
         </div>
       </div>
       <div class="pt-2 flex gap-2">
+        <button id="btnDeleteProduct" onclick="deleteProductFromModal()" class="hidden px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold">Удалить</button>
         <button onclick="closeProductModal()" class="flex-1 py-2.5 bg-stone-100 text-stone-600 rounded-xl text-xs font-semibold">Отмена</button>
         <button onclick="saveProductModal()" class="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold shadow-md">Сохранить</button>
       </div>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ВЫСТАВКА -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ВЫСТАВКА / МАРКЕТ ==================== -->
   <div id="eventModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-stone-800 text-sm">Текущая выставка / маркет</h3>
+        <h3 class="font-bold text-stone-800 text-sm">Управление выставками / маркетами</h3>
         <button onclick="closeEventModal()" class="text-stone-400">✕</button>
       </div>
-      <div class="space-y-2">
-        <label class="block text-xs text-stone-500">Название мероприятия:</label>
-        <input type="text" id="eventInputName" class="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 font-semibold">
+      <div class="space-y-1.5">
+        <label class="block text-[11px] font-bold text-stone-500 uppercase">Активное мероприятие:</label>
+        <div class="flex gap-2">
+          <input type="text" id="eventInputName" class="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-800 font-semibold">
+          <button onclick="saveCurrentEvent()" class="px-3.5 py-2 bg-amber-800 text-white rounded-xl text-xs font-bold">Сохранить</button>
+        </div>
       </div>
-      <button onclick="saveCurrentEvent()" class="w-full py-2.5 bg-amber-800 text-white rounded-xl text-xs font-bold">Применить</button>
+      <div class="space-y-1.5">
+        <label class="block text-[11px] font-bold text-stone-400 uppercase">Быстрое переключение:</label>
+        <div id="eventsHistoryList" class="space-y-1 max-h-40 overflow-y-auto"></div>
+      </div>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: PIN -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: PIN-КОД ==================== -->
   <div id="pinModal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-xs p-5 shadow-2xl text-center space-y-3">
       <div class="w-12 h-12 bg-amber-100 text-amber-800 mx-auto rounded-full flex items-center justify-center">
@@ -397,13 +561,13 @@
       </div>
       <input type="password" id="pinInput" inputmode="numeric" maxlength="4" class="w-32 mx-auto text-center tracking-[0.4em] text-2xl font-mono py-2 bg-stone-50 border border-stone-300 rounded-xl focus:border-amber-700 focus:outline-none">
       <div class="grid grid-cols-2 gap-2 pt-1">
-        <button onclick="closePinModal()" class="py-2 bg-stone-100 rounded-xl text-xs font-semibold text-stone-600">Отмена</button>
+        <button id="pinCancelBtn" onclick="closePinModal()" class="py-2 bg-stone-100 rounded-xl text-xs font-semibold text-stone-600">Отмена</button>
         <button onclick="submitPinAction()" class="py-2 bg-amber-800 rounded-xl text-xs font-bold text-white shadow-md">Войти</button>
       </div>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ВЫБОР СОТРУДНИКА -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ВЫБОР СОТРУДНИКА ==================== -->
   <div id="employeePickerModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-xs p-4 shadow-2xl space-y-3">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -414,11 +578,11 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: ШТАТ -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: ШТАТ СОТРУДНИКОВ ==================== -->
   <div id="staffModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
-        <h3 class="font-bold text-stone-800 text-sm">Штат сотрудников</h3>
+        <h3 class="font-bold text-stone-800 text-sm">Штат сотрудников и PIN-коды</h3>
         <button onclick="closeStaffModal()" class="text-stone-400">✕</button>
       </div>
       <div id="staffList" class="space-y-2 max-h-60 overflow-y-auto"></div>
@@ -428,12 +592,12 @@
           <input type="text" id="newStaffName" placeholder="Имя сотрудника" class="bg-stone-50 border border-stone-200 rounded-xl p-2 text-stone-800">
           <input type="password" id="newStaffPin" inputmode="numeric" maxlength="4" placeholder="PIN (4 цифры)" class="bg-stone-50 border border-stone-200 rounded-xl p-2 text-stone-800 font-mono">
         </div>
-        <button onclick="addStaffMember()" class="w-full py-2 bg-amber-800 text-white rounded-xl font-bold">Добавить сотрудника</button>
+        <button onclick="addStaffMember()" class="w-full py-2.5 bg-amber-800 text-white rounded-xl font-bold">Добавить сотрудника</button>
       </div>
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО: SUPABASE -->
+  <!-- ==================== МОДАЛЬНОЕ ОКНО: SUPABASE ==================== -->
   <div id="cloudModal" class="hidden fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-stone-100">
@@ -460,32 +624,54 @@
         <button onclick="syncAllToCloud()" class="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">
           Выгрузить все данные в облако
         </button>
-        <button onclick="pullAllFromCloud()" class="w-full py-2 bg-stone-50 hover:bg-stone-100 text-stone-500 rounded-xl text-[11px] transition">
+        <button onclick="pullAllFromCloud(false)" class="w-full py-2 bg-stone-50 hover:bg-stone-100 text-stone-500 rounded-xl text-[11px] transition">
           Стянуть каталог и чеки из облака
         </button>
       </div>
     </div>
   </div>
 
+  <!-- ==================== СКРИПТ ПРИЛОЖЕНИЯ ==================== -->
   <script>
-    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
-    let db;
+    // --- 1. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+    let db = null;
     let supabaseClient = null;
-    let currentRole = 'ADMIN'; // По умолчанию для Владельца открыт режим Админа
+    let currentRole = 'ADMIN';
     let currentEmployee = { id: 'emp_owner', name: 'Владелец', role: 'ADMIN', pin: '1234' };
     let currentMarket = 'Осенний Маркет Ремесел 2026';
+    let savedEventsList = [
+      'Осенний Маркет Ремесел 2026',
+      'Ярмарка Гончаров и Керамистов',
+      'Городской Фестиваль Дизайна'
+    ];
     let cart = [];
     let discountPercent = 0;
     let paymentMethod = 'Наличные';
     let currentSalesFilter = 'ALL';
     let selectedGroup = 'ALL';
     let selectedOrigin = 'ALL';
+    let html5QrScanner = null;
 
-    // Вспомогательные функции для совместимости со старыми и новыми чеками
+    // Безопасная отрисовка иконок Lucide
+    function safeRenderIcons() {
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        try { lucide.createIcons(); } catch (e) {}
+      }
+    }
+
+    // Вызываем отрисовку иконок сразу при загрузке DOM, не дожидаясь базы данных
+    document.addEventListener('DOMContentLoaded', () => {
+      safeRenderIcons();
+      setupBluetoothBarcodeListener();
+      initDatabaseSafely();
+    });
+
+    // Совместимость со старыми и новыми полями количества в чеках
     function getItemQty(item) {
       return Number(item.qty ?? item.quantity ?? item.count ?? 1);
     }
 
+    // Единое отображение способов оплаты
     function formatPaymentMethod(method) {
       const map = {
         'CASH': 'Наличные',
@@ -493,7 +679,9 @@
         'CARD': 'Терминал',
         'Наличные': 'Наличные',
         'Перевод': 'СБП / Перевод',
-        'Карта': 'Терминал'
+        'СБП / Перевод': 'СБП / Перевод',
+        'Карта': 'Терминал',
+        'Терминал': 'Терминал'
       };
       return map[method] || method || 'Наличные';
     }
@@ -567,22 +755,51 @@
       { id: 'emp_ivan', name: 'Иван (Продавец)', role: 'CASHIER', pin: '2222' }
     ];
 
-    // --- ОТКРЫТИЕ БАЗЫ INDEXEDDB ---
-    const req = indexedDB.open('PotteryPOS_MasterDB', 3);
-    req.onupgradeneeded = (e) => {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'id' });
-      if (!db.objectStoreNames.contains('sales')) db.createObjectStore('sales', { keyPath: 'id' });
-      if (!db.objectStoreNames.contains('employees')) db.createObjectStore('employees', { keyPath: 'id' });
-      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-    };
-    req.onsuccess = (e) => {
-      db = e.target.result;
-      seedInitialData();
-      initSupabase();
-    };
+    // --- 2. БЕЗОПАСНОЕ ОТКРЫТИЕ INDEXEDDB БЕЗ VERSION_ERROR ---
+    function ensureObjectStores(database) {
+      if (!database.objectStoreNames.contains('products')) database.createObjectStore('products', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('sales')) database.createObjectStore('sales', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('employees')) database.createObjectStore('employees', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('settings')) database.createObjectStore('settings', { keyPath: 'key' });
+    }
+
+    function initDatabaseSafely() {
+      // Открываем базу БЕЗ жесткого номера версии — браузер сам откроет актуальную версию (3, 4, 10 и т.д.)
+      const req = indexedDB.open('PotteryPOS_MasterDB');
+
+      req.onupgradeneeded = (e) => {
+        ensureObjectStores(e.target.result);
+      };
+
+      req.onsuccess = (e) => {
+        const database = e.target.result;
+        const requiredStores = ['products', 'sales', 'employees', 'settings'];
+        const missingStore = requiredStores.some(name => !database.objectStoreNames.contains(name));
+
+        if (missingStore) {
+          const nextVer = (database.version || 1) + 1;
+          database.close();
+          const upgReq = indexedDB.open('PotteryPOS_MasterDB', nextVer);
+          upgReq.onupgradeneeded = (ev) => ensureObjectStores(ev.target.result);
+          upgReq.onsuccess = (ev) => {
+            db = ev.target.result;
+            seedInitialData();
+            initSupabase();
+          };
+        } else {
+          db = database;
+          seedInitialData();
+          initSupabase();
+        }
+      };
+
+      req.onerror = (e) => {
+        console.error('Ошибка открытия IndexedDB:', e);
+      };
+    }
 
     function seedInitialData() {
+      if (!db) return;
       const tx = db.transaction(['products', 'employees', 'settings'], 'readwrite');
       const pStore = tx.objectStore('products');
       const eStore = tx.objectStore('employees');
@@ -599,9 +816,10 @@
         }
       };
       sStore.get('market_name').onsuccess = (ev) => {
-        if (ev.target.result) {
+        if (ev.target.result && ev.target.result.val) {
           currentMarket = ev.target.result.val;
           document.getElementById('headerMarketName').textContent = currentMarket;
+          if (!savedEventsList.includes(currentMarket)) savedEventsList.unshift(currentMarket);
         }
       };
 
@@ -610,13 +828,14 @@
         renderProducts();
         renderCart();
         renderSales();
+        safeRenderIcons();
       };
     }
 
-    // --- ОБЛАКО SUPABASE ---
+    // --- 3. ОБЛАКО SUPABASE ---
     function initSupabase() {
-      const url = localStorage.getItem('pos_sb_url');
-      const key = localStorage.getItem('pos_sb_key');
+      const url = localStorage.getItem('pos_sb_url') || localStorage.getItem('pottery_sb_url');
+      const key = localStorage.getItem('pos_sb_key') || localStorage.getItem('pottery_sb_key');
       if (url && key && window.supabase) {
         try {
           supabaseClient = window.supabase.createClient(url, key);
@@ -641,10 +860,10 @@
       const dot = document.getElementById('cloudDot');
       const txt = document.getElementById('cloudText');
       if (online) {
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0';
         txt.textContent = label || 'Онлайн';
       } else {
-        dot.className = 'w-2 h-2 rounded-full bg-stone-400';
+        dot.className = 'w-2 h-2 rounded-full bg-stone-400 flex-shrink-0';
         txt.textContent = label || 'Офлайн';
       }
     }
@@ -654,10 +873,14 @@
       supabaseClient.channel('pos-realtime-channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
           pullAllFromCloud(true);
-        }).subscribe();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+          pullAllFromCloud(true);
+        })
+        .subscribe();
     }
 
-    // --- РОЛИ И PIN-КОДЫ ---
+    // --- 4. РОЛИ И PIN-КОДЫ ---
     function handleRoleToggle() {
       if (currentRole === 'CASHIER') {
         askPin('Вход администратора', 'Введите PIN владельца (по умолч. 1234)', (pin) => {
@@ -681,45 +904,50 @@
       if (!isAdmin) switchTab('cashier');
       renderProducts();
       renderSales();
+      safeRenderIcons();
     }
 
     function lockScreen() {
-      askPin('Касса заблокирована', `Сотрудник: ${currentEmployee.name}`, (pin) => {
+      askPin('Касса заблокирована', `Сотрудник: ${currentEmployee.name}. Введите PIN`, (pin) => {
         if (pin === currentEmployee.pin || pin === '1234') {
           // разблокировано
         } else {
           alert('Неверный PIN!');
           lockScreen();
         }
-      });
+      }, false);
     }
 
     let activePinCallback = null;
-    function askPin(title, sub, callback) {
+    function askPin(title, sub, callback, allowCancel = true) {
       document.getElementById('pinModalTitle').textContent = title;
       document.getElementById('pinModalSub').textContent = sub;
+      document.getElementById('pinCancelBtn').classList.toggle('hidden', !allowCancel);
       const input = document.getElementById('pinInput');
       input.value = '';
       activePinCallback = callback;
       document.getElementById('pinModal').classList.remove('hidden');
-      input.focus();
+      setTimeout(() => input.focus(), 50);
     }
     function submitPinAction() {
       const pin = document.getElementById('pinInput').value;
       document.getElementById('pinModal').classList.add('hidden');
       if (activePinCallback) activePinCallback(pin);
     }
-    function closePinModal() { document.getElementById('pinModal').classList.add('hidden'); }
+    function closePinModal() {
+      document.getElementById('pinModal').classList.add('hidden');
+    }
 
-    // --- ВЫБОР ПРОДАВЦА ---
+    // --- 5. ВЫБОР ПРОДАВЦА ---
     function openEmployeePickerModal() {
+      if (!db) return;
       const tx = db.transaction(['employees'], 'readonly');
       tx.objectStore('employees').getAll().onsuccess = (e) => {
         const staff = e.target.result || [];
         const box = document.getElementById('employeePickerList');
         box.innerHTML = staff.map(emp => `
           <button onclick="selectEmployee('${emp.id}')" class="w-full text-left p-2.5 rounded-xl border border-stone-200 hover:bg-amber-50 flex items-center justify-between transition">
-            <span class="font-medium text-xs text-stone-800">${emp.name}</span>
+            <span class="font-bold text-xs text-stone-800">${emp.name}</span>
             <span class="text-[10px] text-stone-400 font-mono">${emp.role === 'ADMIN' ? 'Администратор' : 'Продавец'}</span>
           </button>
         `).join('');
@@ -748,70 +976,98 @@
       };
     }
 
-    // --- ВЫСТАВКА / МАРКЕТ ---
+    // --- 6. ВЫСТАВКА / МАРКЕТ ---
     function openEventModal() {
       document.getElementById('eventInputName').value = currentMarket;
+      const listEl = document.getElementById('eventsHistoryList');
+      listEl.innerHTML = savedEventsList.map(ev => `
+        <button onclick="pickSavedEvent('${ev.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between ${ev === currentMarket ? 'bg-amber-50 border border-amber-300 font-bold text-amber-900' : 'bg-stone-50 hover:bg-stone-100 text-stone-700'}">
+          <span class="truncate">${ev}</span>
+          ${ev === currentMarket ? '<span class="text-[10px] bg-amber-800 text-white px-2 py-0.5 rounded">Активен</span>' : ''}
+        </button>
+      `).join('');
       document.getElementById('eventModal').classList.remove('hidden');
     }
     function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
+
+    function pickSavedEvent(name) {
+      document.getElementById('eventInputName').value = name;
+      saveCurrentEvent();
+    }
+
     function saveCurrentEvent() {
       const val = document.getElementById('eventInputName').value.trim();
       if (!val) return;
       currentMarket = val;
+      if (!savedEventsList.includes(val)) savedEventsList.unshift(val);
       document.getElementById('headerMarketName').textContent = currentMarket;
-      const tx = db.transaction(['settings'], 'readwrite');
-      tx.objectStore('settings').put({ key: 'market_name', val });
+      if (db) {
+        const tx = db.transaction(['settings'], 'readwrite');
+        tx.objectStore('settings').put({ key: 'market_name', val });
+      }
       closeEventModal();
+      renderSales();
     }
 
-    // --- ВИТРИНА И КАТАЛОГ ---
+    // --- 7. ВИТРИНА И КАТАЛОГ ---
+    function clearSearchInput() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderProducts();
+    }
+
     function selectGroup(grp, btn) {
       selectedGroup = grp;
       document.querySelectorAll('.group-btn').forEach(b => {
-        b.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-white text-stone-600 border border-stone-200';
+        b.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-stone-100 text-stone-600 hover:bg-stone-200';
       });
-      if (btn) btn.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-amber-900 text-white shadow-sm';
+      if (btn) btn.className = 'group-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-amber-900 text-white shadow-sm';
       renderProducts();
     }
 
     function selectOrigin(orig) {
       selectedOrigin = orig;
-      document.getElementById('originAll').className = orig === 'ALL' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
-      document.getElementById('originOwn').className = orig === 'СВОЕ' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
-      document.getElementById('originBuy').className = orig === 'ЗАКУПКА' ? 'px-2 py-0.5 rounded-md bg-stone-200 text-stone-800 font-medium' : 'px-2 py-0.5 rounded-md text-stone-600';
+      document.getElementById('originAll').className = orig === 'ALL' ? 'px-2.5 py-0.5 rounded-lg bg-amber-800 text-white font-bold text-[11px]' : 'px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 font-medium text-[11px]';
+      document.getElementById('originOwn').className = orig === 'СВОЕ' ? 'px-2.5 py-0.5 rounded-lg bg-amber-800 text-white font-bold text-[11px]' : 'px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 font-medium text-[11px]';
+      document.getElementById('originBuy').className = orig === 'ЗАКУПКА' ? 'px-2.5 py-0.5 rounded-lg bg-amber-800 text-white font-bold text-[11px]' : 'px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-600 font-medium text-[11px]';
       renderProducts();
     }
 
     function renderProducts() {
+      if (!db) return;
       const tx = db.transaction(['products'], 'readonly');
       tx.objectStore('products').getAll().onsuccess = (e) => {
         const products = e.target.result || [];
-        const q = document.getElementById('searchInput').value.toLowerCase().trim();
+        const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+        document.getElementById('clearSearchBtn').classList.toggle('hidden', q.length === 0);
 
         const filtered = products.filter(p => {
           const matchQ = p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.barcode && p.barcode.includes(q));
           const matchG = selectedGroup === 'ALL' || p.group === selectedGroup;
-          const matchO = selectedOrigin === 'ALL' || p.origin === selectedOrigin;
+          const os = (p.origin === 'SELF' ? 'СВОЕ' : (p.origin === 'BUY' ? 'ЗАКУПКА' : (p.origin || 'СВОЕ')));
+          const matchO = selectedOrigin === 'ALL' || os === selectedOrigin;
           return matchQ && matchG && matchO;
         });
 
         document.getElementById('productsCount').textContent = `Найдено: ${filtered.length} шт`;
 
+        const fallbackImg = 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=300&auto=format&fit=crop&q=60';
         const grid = document.getElementById('productsGrid');
         grid.innerHTML = filtered.map(p => {
-          const imgHtml = p.image 
-            ? `<img src="${p.image}" class="w-full h-28 object-cover rounded-xl mb-2 bg-stone-100" onerror="this.src='https://via.placeholder.com/300x200?text=Керамика'">`
-            : `<div class="w-full h-28 rounded-xl bg-amber-50 flex items-center justify-center text-amber-300 mb-2"><i data-lucide="package" class="w-8 h-8"></i></div>`;
+          const originText = (p.origin === 'BUY' || p.origin === 'ЗАКУПКА') ? 'ЗАКУПКА' : 'СВОЕ';
+          const inCartItem = cart.find(c => c.id === p.id);
+          const inCartBadge = inCartItem ? `<span class="absolute top-1.5 right-1.5 bg-amber-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">+${inCartItem.qty} в чеке</span>` : '';
 
           return `
             <div onclick="addToCart('${p.id}')" class="bg-white border border-stone-200 hover:border-amber-600 p-2.5 rounded-2xl cursor-pointer active:scale-[0.98] transition flex flex-col justify-between shadow-sm">
               <div>
                 <div class="relative">
-                  ${imgHtml}
-                  <span class="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${p.origin === 'СВОЕ' ? 'bg-amber-900/80 text-white' : 'bg-stone-800/80 text-white'}">${p.origin || 'СВОЕ'}</span>
-                  <span class="absolute bottom-3 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/90 text-stone-700 shadow-sm">Осталось: ${p.stock}</span>
+                  <img src="${p.image || fallbackImg}" class="w-full h-28 object-cover rounded-xl mb-2 bg-stone-100" onerror="this.src='${fallbackImg}'">
+                  <span class="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${originText === 'СВОЕ' ? 'bg-amber-900/85 text-white' : 'bg-stone-800/85 text-white'}">${originText}</span>
+                  ${inCartBadge}
+                  <span class="absolute bottom-3 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/95 text-stone-700 shadow-sm">Осталось: ${p.stock}</span>
                 </div>
-                <p class="text-[10px] text-stone-400 font-mono">${p.sku || ''}</p>
+                <p class="text-[10px] text-stone-400 font-mono truncate">${p.sku || ''}</p>
                 <h4 class="text-xs font-bold text-stone-800 line-clamp-2 leading-tight mt-0.5">${p.name}</h4>
               </div>
               <div class="mt-2 pt-2 border-t border-stone-100 flex justify-between items-center">
@@ -826,26 +1082,27 @@
         tbody.innerHTML = products.map(p => `
           <tr class="hover:bg-stone-50 transition">
             <td class="p-3">
-              <img src="${p.image || 'https://via.placeholder.com/50'}" class="w-9 h-9 object-cover rounded-lg bg-stone-100">
+              <img src="${p.image || fallbackImg}" class="w-9 h-9 object-cover rounded-lg bg-stone-100" onerror="this.src='${fallbackImg}'">
             </td>
             <td class="p-3 font-mono text-stone-500 font-semibold">${p.sku || '—'}</td>
             <td class="p-3 font-bold text-stone-800">${p.name}</td>
             <td class="p-3 text-stone-500">${p.group || '—'}</td>
             <td class="p-3 text-right font-bold ${p.stock <= 5 ? 'text-amber-700' : 'text-stone-700'}">${p.stock} шт</td>
             <td class="p-3 text-right font-black text-amber-900">${p.price} ₽</td>
-            <td class="p-3 text-right text-stone-500">${p.cost_price || 0} ₽</td>
+            <td class="p-3 text-right text-stone-500">${p.cost_price ?? p.costPrice ?? 0} ₽</td>
             <td class="p-3 text-center">
               <button onclick="openProductModal('${p.id}')" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold">Правка</button>
             </td>
           </tr>
         `).join('');
 
-        lucide.createIcons();
+        safeRenderIcons();
       };
     }
 
-    // --- КОРЗИНА И ОПЛАТА ---
+    // --- 8. КОРЗИНА И ОПЛАТА ---
     function addToCart(prodId) {
+      if (!db) return;
       const tx = db.transaction(['products'], 'readonly');
       tx.objectStore('products').get(prodId).onsuccess = (e) => {
         const prod = e.target.result;
@@ -858,16 +1115,17 @@
           cart.push({ ...prod, qty: 1 });
         }
         renderCart();
+        renderProducts();
       };
     }
 
     function setDiscount(pct) {
       discountPercent = pct;
       document.querySelectorAll('.disc-btn').forEach(b => {
-        b.className = 'disc-btn px-2 py-0.5 rounded bg-stone-100 text-stone-600';
+        b.className = 'disc-btn px-2 py-0.5 rounded-lg bg-stone-100 text-stone-600';
       });
       const active = document.getElementById('disc' + pct);
-      if (active) active.className = 'disc-btn px-2 py-0.5 rounded bg-amber-800 text-white font-bold';
+      if (active) active.className = 'disc-btn px-2 py-0.5 rounded-lg bg-amber-800 text-white font-bold';
       renderCart();
     }
 
@@ -904,12 +1162,26 @@
     }
 
     function stepQty(idx, d) {
-      cart[idx].qty += d;
-      if (cart[idx].qty <= 0) cart.splice(idx, 1);
+      const item = cart[idx];
+      if (d > 0 && item.qty >= item.stock) {
+        return alert('Достигнут максимальный остаток на складе!');
+      }
+      item.qty += d;
+      if (item.qty <= 0) cart.splice(idx, 1);
       renderCart();
+      renderProducts();
     }
-    function clearCart() { cart = []; setDiscount(0); renderCart(); }
-    function scrollToCart() { document.getElementById('cartCard').scrollIntoView({ behavior: 'smooth' }); }
+
+    function clearCart() {
+      cart = [];
+      setDiscount(0);
+      renderCart();
+      renderProducts();
+    }
+
+    function scrollToCart() {
+      document.getElementById('cartCard').scrollIntoView({ behavior: 'smooth' });
+    }
 
     function setPaymentMethod(method) {
       paymentMethod = method;
@@ -926,10 +1198,9 @@
       if (cart.length === 0) return alert('Корзина пуста!');
       const rawTotal = cart.reduce((s, i) => s + (i.price * i.qty), 0);
       const finalTotal = Math.round(rawTotal * (1 - discountPercent / 100));
-      const cost = cart.reduce((s, i) => s + ((i.cost_price || 0) * i.qty), 0);
+      const cost = cart.reduce((s, i) => s + ((Number(i.cost_price ?? i.costPrice) || 0) * i.qty), 0);
       const now = new Date();
 
-      // Сохраняем и qty, и quantity для полной обратной совместимости
       const normalizedItems = cart.map(i => ({ ...i, qty: i.qty, quantity: i.qty }));
 
       const sale = {
@@ -976,11 +1247,11 @@
         renderCart();
         renderProducts();
         renderSales();
-        alert('Чек успешно проведен!');
+        alert(`Чек на сумму ${finalTotal} ₽ успешно проведен!`);
       };
     }
 
-    // --- АННУЛИРОВАНИЕ ОШИБОК И ВОЗВРАТЫ ОТ КЛИЕНТА ---
+    // --- 9. АННУЛИРОВАНИЕ ОШИБОК И ВОЗВРАТЫ ОТ КЛИЕНТА ---
     function handleCancelSale(saleId) {
       if (!confirm('Аннулировать этот чек как ОШИБОЧНЫЙ?\n\n• Изделия вернутся на остатки склада.\n• Сумма чека будет исключена из выручки кассы.\n• Чек останется в базе со статусом ОШИБКА.')) return;
       changeSaleStatus(saleId, 'CANCELLED', 'Ошибочная операция');
@@ -1008,13 +1279,14 @@
         sale.status_updated_at = new Date().toISOString();
         sStore.put(sale);
 
-        // Возврат остатков на склад (с учетом и qty, и старого quantity)
+        // Возврат остатков на склад
         const pTx = db.transaction(['products'], 'readwrite');
         const pStore = pTx.objectStore('products');
         (sale.items || []).forEach(item => {
           const returnQty = getItemQty(item);
-          if (item.id) {
-            pStore.get(item.id).onsuccess = (ev) => {
+          const targetId = item.id || item.productId;
+          if (targetId) {
+            pStore.get(targetId).onsuccess = (ev) => {
               const p = ev.target.result;
               if (p) {
                 p.stock = (Number(p.stock) || 0) + returnQty;
@@ -1043,60 +1315,114 @@
       };
     }
 
-    // --- ЕДИНЫЙ РАСЧЕТ ОТЧЕТОВ, СОТРУДНИКОВ И ЖУРНАЛА ЧЕКОВ ---
+    // --- 10. РАСЧЕТ ОТЧЕТОВ, СОТРУДНИКОВ И ЖУРНАЛА ЧЕКОВ ---
     function renderSales() {
+      if (!db) return;
       const tx = db.transaction(['sales', 'employees'], 'readonly');
       tx.objectStore('sales').getAll().onsuccess = (e) => {
-        const sales = (e.target.result || []).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+        const allSales = (e.target.result || []).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 
-        let revCompleted = 0, costCompleted = 0;
-        let revRefunded = 0;
-        let countRefunded = 0, countCancelled = 0;
+        // Обновляем выпадающий список выставок в отчетах
+        const evFilterEl = document.getElementById('reportEventFilter');
+        const currentEvFilter = evFilterEl ? evFilterEl.value : 'ALL';
+        const distinctEvents = Array.from(new Set([...savedEventsList, ...allSales.map(s => s.event_name || s.eventName).filter(Boolean)]));
+        if (evFilterEl) {
+          evFilterEl.innerHTML = `<option value="ALL">Все мероприятия</option>` + distinctEvents.map(ev => `
+            <option value="${ev}" ${ev === currentEvFilter ? 'selected' : ''}>${ev}</option>
+          `).join('');
+        }
 
-        sales.forEach(s => {
-          const st = s.status || 'COMPLETED';
-          const total = Number(s.final_total) || 0;
-          const cost = Number(s.total_cost) || 0;
-
-          if (st === 'COMPLETED') {
-            revCompleted += total;
-            costCompleted += cost;
-          } else if (st === 'REFUNDED') {
-            revRefunded += total;
-            countRefunded++;
-          } else if (st === 'CANCELLED') {
-            countCancelled++;
-          }
-        });
-
-        // Карточки наверху:
-        // Если чек переведен в статус REFUNDED, он уже не входит в revCompleted,
-        // поэтому revCompleted — это уже чистая выручка активных продаж.
-        document.getElementById('statNetRevenue').textContent = `${revCompleted} ₽`;
-        document.getElementById('statRefunds').textContent = `-${revRefunded} ₽`;
-        document.getElementById('statRefundsCount').textContent = `${countRefunded} чеков`;
-        document.getElementById('statCancelledCount').textContent = `${countCancelled} чеков`;
-        document.getElementById('statNetProfit').textContent = `${revCompleted - costCompleted} ₽`;
-
-        // Таблица «Продажи по сотрудникам» (сопоставление и по ID, и по Имени!)
         tx.objectStore('employees').getAll().onsuccess = (empEv) => {
           const staff = empEv.target.result || [];
-          const statsBody = document.getElementById('employeeStatsBody');
+          const empFilterEl = document.getElementById('reportEmployeeFilter');
+          const currentEmpFilter = empFilterEl ? empFilterEl.value : 'ALL';
+          if (empFilterEl) {
+            empFilterEl.innerHTML = `<option value="ALL">Все сотрудники</option>` + staff.map(emp => `
+              <option value="${emp.name}" ${emp.name === currentEmpFilter ? 'selected' : ''}>${emp.name}</option>
+            `).join('');
+          }
 
           const norm = (str) => (str || '').trim().toLowerCase();
 
+          // Фильтруем чеки по выбранной выставке и кассиру
+          const sales = allSales.filter(s => {
+            const sEvent = s.event_name || s.eventName || '';
+            const sEmpName = s.employee_name || s.employeeName || 'Владелец';
+            if (currentEvFilter !== 'ALL' && sEvent !== currentEvFilter) return false;
+            if (currentEmpFilter !== 'ALL' && norm(sEmpName) !== norm(currentEmpFilter)) return false;
+            return true;
+          });
+
+          let revCompleted = 0, costCompleted = 0;
+          let revRefunded = 0;
+          let countRefunded = 0, countCancelled = 0;
+          let cashSum = 0, transferSum = 0, cardSum = 0;
+          const productRank = {};
+
+          sales.forEach(s => {
+            const st = s.status || 'COMPLETED';
+            const total = Number(s.final_total ?? s.finalTotal) || 0;
+            const cost = Number(s.total_cost ?? s.totalCost) || 0;
+            const pay = formatPaymentMethod(s.payment_method ?? s.paymentMethod);
+
+            if (st === 'COMPLETED') {
+              revCompleted += total;
+              costCompleted += cost;
+              if (pay === 'Наличные') cashSum += total;
+              else if (pay === 'СБП / Перевод') transferSum += total;
+              else cardSum += total;
+
+              (s.items || []).forEach(it => {
+                const q = getItemQty(it);
+                if (!productRank[it.name]) productRank[it.name] = { qty: 0, sum: 0 };
+                productRank[it.name].qty += q;
+                productRank[it.name].sum += (Number(it.price) || 0) * q;
+              });
+            } else if (st === 'REFUNDED') {
+              revRefunded += total;
+              countRefunded++;
+            } else if (st === 'CANCELLED') {
+              countCancelled++;
+            }
+          });
+
+          document.getElementById('statNetRevenue').textContent = `${revCompleted} ₽`;
+          document.getElementById('statRefunds').textContent = `-${revRefunded} ₽`;
+          document.getElementById('statRefundsCount').textContent = `${countRefunded} чеков`;
+          document.getElementById('statCancelledCount').textContent = `${countCancelled} чеков`;
+          document.getElementById('statNetProfit').textContent = `${revCompleted - costCompleted} ₽`;
+
+          document.getElementById('payStatCash').textContent = `${cashSum} ₽`;
+          document.getElementById('payStatTransfer').textContent = `${transferSum} ₽`;
+          document.getElementById('payStatCard').textContent = `${cardSum} ₽`;
+
+          // Топ продаж на маркете
+          const topSorted = Object.entries(productRank).sort((a, b) => b[1].qty - a[1].qty).slice(0, 5);
+          const topEl = document.getElementById('topProductsList');
+          if (topSorted.length === 0) {
+            topEl.innerHTML = `<p class="text-stone-400 italic">Продаж по выбранному фильтру пока нет</p>`;
+          } else {
+            topEl.innerHTML = topSorted.map(([name, info]) => `
+              <div class="flex items-center justify-between py-1 border-b border-stone-50 last:border-0">
+                <span class="font-medium text-stone-800 truncate pr-2">${name}</span>
+                <span class="font-bold text-stone-900 whitespace-nowrap">${info.qty} шт <span class="text-stone-400 font-normal">(${info.sum} ₽)</span></span>
+              </div>
+            `).join('');
+          }
+
+          // Таблица «Продажи по сотрудникам» (сопоставление и по ID, и по Имени)
+          const statsBody = document.getElementById('employeeStatsBody');
           statsBody.innerHTML = staff.map(emp => {
-            // Ищем чеки, где совпадает либо ID сотрудника, либо его Имя (например, "Владелец")
             const empSales = sales.filter(s => 
               (s.employee_id && s.employee_id === emp.id) || 
-              (s.employee_name && norm(s.employee_name) === norm(emp.name))
+              (s.employeeId && s.employeeId === emp.id) ||
+              norm(s.employee_name || s.employeeName) === norm(emp.name)
             );
 
             const completed = empSales.filter(s => (s.status || 'COMPLETED') === 'COMPLETED');
             const refunded = empSales.filter(s => s.status === 'REFUNDED');
             const cancelled = empSales.filter(s => s.status === 'CANCELLED');
-
-            const revenue = completed.reduce((acc, s) => acc + (Number(s.final_total) || 0), 0);
+            const revenue = completed.reduce((acc, s) => acc + (Number(s.final_total ?? s.finalTotal) || 0), 0);
 
             return `
               <tr class="hover:bg-stone-50">
@@ -1108,98 +1434,197 @@
               </tr>
             `;
           }).join('');
-        };
 
-        // Фильтрация журнала чеков
-        const filtered = sales.filter(s => {
-          const st = s.status || 'COMPLETED';
-          if (currentSalesFilter === 'ALL') return true;
-          return st === currentSalesFilter;
-        });
+          // Фильтрация журнала чеков по статусу (Все / Оплачен / Возврат / Ошибка)
+          const filtered = sales.filter(s => {
+            const st = s.status || 'COMPLETED';
+            if (currentSalesFilter === 'ALL') return true;
+            return st === currentSalesFilter;
+          });
 
-        const box = document.getElementById('salesList');
-        if (filtered.length === 0) {
-          box.innerHTML = '<div class="text-stone-400 text-center py-8 text-xs">Нет операций в этой категории</div>';
-          return;
-        }
-
-        box.innerHTML = filtered.map(s => {
-          const st = s.status || 'COMPLETED';
-          const isCompleted = (st === 'COMPLETED');
-          const isRefunded = (st === 'REFUNDED');
-          const isCancelled = (st === 'CANCELLED');
-
-          let badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">ОПЛАЧЕН</span>';
-          let border = 'border-stone-200 bg-white';
-          let priceClass = 'text-stone-800';
-
-          if (isRefunded) {
-            badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900">ВОЗВРАТ ТОВАРА</span>';
-            border = 'border-amber-200 bg-amber-50/40';
-            priceClass = 'text-amber-800 line-through';
-          } else if (isCancelled) {
-            badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-600 line-through">ОШИБОЧНЫЙ ЧЕК</span>';
-            border = 'border-stone-200 bg-stone-50 opacity-60';
-            priceClass = 'text-stone-400 line-through';
+          const box = document.getElementById('salesList');
+          if (filtered.length === 0) {
+            box.innerHTML = '<div class="text-stone-400 text-center py-8 text-xs">Нет операций в этой категории</div>';
+            return;
           }
 
-          // Читаем и qty, и старое поле quantity, чтобы никогда не было (×undefined)
-          const itemsStr = (s.items || []).map(i => `${i.name} (×${getItemQty(i)})`).join(', ');
+          box.innerHTML = filtered.map(s => {
+            const st = s.status || 'COMPLETED';
+            const isCompleted = (st === 'COMPLETED');
+            const isRefunded = (st === 'REFUNDED');
+            const isCancelled = (st === 'CANCELLED');
+            const totalVal = Number(s.final_total ?? s.finalTotal) || 0;
 
-          return `
-            <div class="p-3.5 rounded-2xl border ${border} shadow-sm text-xs space-y-2">
-              <div class="flex justify-between items-start">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono font-bold text-stone-500">#${s.id.slice(-6)}</span>
-                    <span class="text-stone-400">${s.date_str || ''} ${s.time_str || ''}</span>
-                    ${badge}
+            let badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">ОПЛАЧЕН</span>';
+            let border = 'border-stone-200 bg-white';
+            let priceClass = 'text-stone-800';
+
+            if (isRefunded) {
+              badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900">ВОЗВРАТ ТОВАРА</span>';
+              border = 'border-amber-200 bg-amber-50/40';
+              priceClass = 'text-amber-800 line-through';
+            } else if (isCancelled) {
+              badge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-600 line-through">ОШИБОЧНЫЙ ЧЕК</span>';
+              border = 'border-stone-200 bg-stone-50 opacity-60';
+              priceClass = 'text-stone-400 line-through';
+            }
+
+            const itemsStr = (s.items || []).map(i => `${i.name} (×${getItemQty(i)})`).join(', ');
+
+            return `
+              <div class="p-3.5 rounded-2xl border ${border} shadow-sm text-xs space-y-2">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-mono font-bold text-stone-500">#${String(s.id).slice(-6)}</span>
+                      <span class="text-stone-400">${s.date_str || s.dateStr || ''} ${s.time_str || s.timeStr || ''}</span>
+                      ${badge}
+                    </div>
+                    <p class="text-[11px] text-stone-500 mt-1">
+                      Кассир: <b class="text-stone-700">${s.employee_name || s.employeeName || 'Владелец'}</b> | Выставка: ${s.event_name || s.eventName || '—'} | Оплата: ${formatPaymentMethod(s.payment_method ?? s.paymentMethod)}
+                    </p>
                   </div>
-                  <p class="text-[11px] text-stone-500 mt-1">
-                    Кассир: <b class="text-stone-700">${s.employee_name || 'Владелец'}</b> | Выставка: ${s.event_name || '—'} | Оплата: ${formatPaymentMethod(s.payment_method)}
-                  </p>
+                  <div class="text-right">
+                    <span class="text-base font-black ${priceClass}">${totalVal} ₽</span>
+                  </div>
                 </div>
-                <div class="text-right">
-                  <span class="text-base font-black ${priceClass}">${s.final_total} ₽</span>
+
+                <div class="text-[11px] text-stone-600 bg-stone-50 p-2 rounded-xl">
+                  ${itemsStr}
                 </div>
+
+                ${isCompleted ? `
+                  <div class="flex justify-end gap-2 pt-1 border-t border-stone-100">
+                    <button onclick="handleCancelSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-red-100 text-red-700 font-semibold text-[11px] transition flex items-center gap-1 border border-stone-200">
+                      <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Ошибочный чек
+                    </button>
+                    <button onclick="handleRefundSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold text-[11px] transition flex items-center gap-1 border border-amber-300">
+                      <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Возврат от клиента
+                    </button>
+                  </div>
+                ` : ''}
               </div>
+            `;
+          }).join('');
 
-              <div class="text-[11px] text-stone-600 bg-stone-50 p-2 rounded-xl">
-                ${itemsStr}
-              </div>
-
-              ${isCompleted ? `
-                <div class="flex justify-end gap-2 pt-1 border-t border-stone-100">
-                  <button onclick="handleCancelSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-red-100 text-red-700 font-semibold text-[11px] transition flex items-center gap-1 border border-stone-200">
-                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Ошибочный чек
-                  </button>
-                  <button onclick="handleRefundSale('${s.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold text-[11px] transition flex items-center gap-1 border border-amber-300">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Возврат от клиента
-                  </button>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-
-        lucide.createIcons();
+          safeRenderIcons();
+        };
       };
     }
 
     function filterSales(flt) {
       currentSalesFilter = flt;
       document.querySelectorAll('#fltAll, #fltCompleted, #fltRefunded, #fltCancelled').forEach(b => {
-        b.className = 'px-2.5 py-1 rounded-lg text-stone-600';
+        b.className = 'flex-1 sm:flex-initial px-2.5 py-1 rounded-lg text-stone-600';
       });
       const map = { ALL: 'fltAll', COMPLETED: 'fltCompleted', REFUNDED: 'fltRefunded', CANCELLED: 'fltCancelled' };
-      document.getElementById(map[flt]).className = 'px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800';
+      document.getElementById(map[flt]).className = 'flex-1 sm:flex-initial px-2.5 py-1 rounded-lg bg-white shadow-sm font-bold text-stone-800';
       renderSales();
     }
 
-    // --- МОДАЛКА ТОВАРА ---
+    // --- 11. КАМЕРНЫЙ И BLUETOOTH СКАНЕР ШТРИХКОДОВ ---
+    function toggleBarcodeScanner() {
+      openScannerModal();
+    }
+
+    function openScannerModal() {
+      const modal = document.getElementById('scannerModal');
+      const statusMsg = document.getElementById('scannerStatusMsg');
+      document.getElementById('manualBarcodeField').value = '';
+      modal.classList.remove('hidden');
+      safeRenderIcons();
+
+      if (typeof Html5Qrcode === 'undefined') {
+        statusMsg.textContent = 'Модуль камеры не загружен. Введите код в поле ниже.';
+        return;
+      }
+
+      try {
+        if (!html5QrScanner) {
+          html5QrScanner = new Html5Qrcode('scannerReader');
+        }
+        statusMsg.textContent = 'Запуск камеры...';
+        html5QrScanner.start(
+          { facingMode: 'environment' },
+          { fps: 14, qrbox: { width: 250, height: 160 } },
+          (decodedText) => {
+            if (navigator.vibrate) navigator.vibrate(100);
+            closeScannerModal();
+            findAndAddProductByCode(decodedText);
+          },
+          () => {}
+        ).then(() => {
+          statusMsg.textContent = 'Наведите камеру на штрихкод или QR-код товара';
+        }).catch(() => {
+          statusMsg.textContent = 'Доступ к камере не разрешен. Введите код вручную ниже:';
+        });
+      } catch (e) {
+        statusMsg.textContent = 'Введите штрихкод или артикул в поле ниже:';
+      }
+    }
+
+    function closeScannerModal() {
+      const modal = document.getElementById('scannerModal');
+      if (html5QrScanner && html5QrScanner.isScanning) {
+        html5QrScanner.stop().then(() => {
+          modal.classList.add('hidden');
+        }).catch(() => {
+          modal.classList.add('hidden');
+        });
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function submitManualBarcodeField() {
+      const val = document.getElementById('manualBarcodeField').value.trim();
+      if (!val) return;
+      closeScannerModal();
+      findAndAddProductByCode(val);
+    }
+
+    function findAndAddProductByCode(code) {
+      const clean = code.trim().toUpperCase();
+      if (!db || !clean) return;
+      const tx = db.transaction(['products'], 'readonly');
+      tx.objectStore('products').getAll().onsuccess = (e) => {
+        const p = (e.target.result || []).find(it => 
+          (it.barcode && String(it.barcode).trim().toUpperCase() === clean) || 
+          (it.sku && String(it.sku).trim().toUpperCase() === clean)
+        );
+        if (p) {
+          addToCart(p.id);
+        } else {
+          alert(`Товар с кодом «${code}» не найден в базе!`);
+        }
+      };
+    }
+
+    // Поддержка физического Bluetooth-сканера штрихкодов
+    let hidBuffer = '';
+    let hidLastKeyTime = 0;
+    function setupBluetoothBarcodeListener() {
+      window.addEventListener('keydown', (e) => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        const now = performance.now();
+        if (now - hidLastKeyTime > 100) hidBuffer = '';
+        hidLastKeyTime = now;
+        if (e.key === 'Enter' && hidBuffer.length >= 3) {
+          findAndAddProductByCode(hidBuffer);
+          hidBuffer = '';
+          e.preventDefault();
+        } else if (e.key.length === 1) {
+          hidBuffer += e.key;
+        }
+      });
+    }
+
+    // --- 12. МОДАЛКА ТОВАРА ---
     function openProductModal(prodId = null) {
       document.getElementById('prodEditId').value = prodId || '';
       document.getElementById('productModalTitle').textContent = prodId ? 'Редактирование товара' : 'Новый товар';
+      document.getElementById('btnDeleteProduct').classList.toggle('hidden', !prodId);
 
       if (prodId) {
         const tx = db.transaction(['products'], 'readonly');
@@ -1212,7 +1637,7 @@
           document.getElementById('prodGroup').value = p.group || 'Посуда';
           document.getElementById('prodOrigin').value = p.origin || 'СВОЕ';
           document.getElementById('prodPrice').value = p.price;
-          document.getElementById('prodCost').value = p.cost_price || 0;
+          document.getElementById('prodCost').value = p.cost_price ?? p.costPrice ?? 0;
           document.getElementById('prodStock').value = p.stock;
           document.getElementById('prodImageUrl').value = p.image || '';
           document.getElementById('productModal').classList.remove('hidden');
@@ -1229,6 +1654,10 @@
       }
     }
     function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+    function generateProductBarcode() {
+      document.getElementById('prodBarcode').value = '460' + Math.floor(100000000 + Math.random() * 900000000);
+    }
 
     function handleSinglePhoto(event) {
       const file = event.target.files[0];
@@ -1269,7 +1698,18 @@
       };
     }
 
-    // --- ПАКЕТНАЯ ЗАГРУЗКА ФОТО ---
+    function deleteProductFromModal() {
+      const editId = document.getElementById('prodEditId').value;
+      if (!editId || !confirm('Удалить этот товар из базы?')) return;
+      const tx = db.transaction(['products'], 'readwrite');
+      tx.objectStore('products').delete(editId).onsuccess = () => {
+        if (supabaseClient) supabaseClient.from('products').delete().eq('id', editId).then();
+        closeProductModal();
+        renderProducts();
+      };
+    }
+
+    // --- 13. ПАКЕТНАЯ ЗАГРУЗКА ФОТО ---
     function handleBatchPhotos(event) {
       const files = Array.from(event.target.files);
       if (!files.length) return;
@@ -1316,7 +1756,7 @@
       };
     }
 
-    // --- ШТАТ СОТРУДНИКОВ ---
+    // --- 14. ШТАТ СОТРУДНИКОВ ---
     function openStaffModal() {
       const tx = db.transaction(['employees'], 'readonly');
       tx.objectStore('employees').getAll().onsuccess = (e) => {
@@ -1328,7 +1768,7 @@
               <p class="font-bold text-stone-800">${emp.name}</p>
               <p class="text-[10px] text-stone-400">PIN: **** | Роль: ${emp.role}</p>
             </div>
-            <button onclick="changeStaffPin('${emp.id}')" class="px-2 py-1 bg-white border border-stone-300 rounded text-[11px] font-medium">Сменить PIN</button>
+            <button onclick="changeStaffPin('${emp.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded-lg text-[11px] font-medium">Сменить PIN</button>
           </div>
         `).join('');
         document.getElementById('staffModal').classList.remove('hidden');
@@ -1368,7 +1808,7 @@
       };
     }
 
-    // --- ВЫГРУЗКА 1С И CSV ---
+    // --- 15. ИМПОРТ / ЭКСПОРТ EXCEL, 1С И JSON БЭКАП ---
     function exportTo1C() {
       const tx = db.transaction(['sales'], 'readonly');
       tx.objectStore('sales').getAll().onsuccess = (e) => {
@@ -1377,7 +1817,7 @@
         sales.forEach(s => {
           (s.items || []).forEach(it => {
             const q = getItemQty(it);
-            csv += `${s.date_str};${s.id};${it.sku || ''};"${it.name}";${q};${it.price};${it.price * q};${formatPaymentMethod(s.payment_method)};"${s.employee_name}";"${s.event_name || ''}"\n`;
+            csv += `${s.date_str || ''};${s.id};${it.sku || ''};"${it.name}";${q};${it.price};${it.price * q};${formatPaymentMethod(s.payment_method)};"${s.employee_name || ''}";"${s.event_name || ''}"\n`;
           });
         });
         downloadFile(csv, `1C_Sales_${new Date().toISOString().slice(0,10)}.csv`);
@@ -1391,7 +1831,7 @@
         let csv = '\uFEFFID;Дата;Время;Статус;Сумма;Прибыль;Оплата;Кассир;Товары\n';
         sales.forEach(s => {
           const items = (s.items || []).map(i => `${i.name} x${getItemQty(i)}`).join(' | ');
-          csv += `${s.id};${s.date_str};${s.time_str};${s.status || 'COMPLETED'};${s.final_total};${s.profit || 0};${formatPaymentMethod(s.payment_method)};"${s.employee_name}";"${items}"\n`;
+          csv += `${s.id};${s.date_str || ''};${s.time_str || ''};${s.status || 'COMPLETED'};${s.final_total};${s.profit || 0};${formatPaymentMethod(s.payment_method)};"${s.employee_name || ''}";"${items}"\n`;
         });
         downloadFile(csv, `Журнал_чеков_${new Date().toISOString().slice(0,10)}.csv`);
       };
@@ -1402,6 +1842,105 @@
       downloadFile(csv, 'Шаблон_каталога.csv');
     }
 
+    function handleCatalogFileImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        let rows = [];
+        if (isExcel && typeof XLSX !== 'undefined') {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        } else {
+          const text = new TextDecoder('utf-8').decode(e.target.result);
+          const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+          if (lines.length > 1) {
+            const headers = lines[0].split(';').map(h => h.trim());
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(';');
+              const obj = {};
+              headers.forEach((h, idx) => obj[h] = (cols[idx] || '').replace(/^"|"$/g, '').trim());
+              rows.push(obj);
+            }
+          }
+        }
+
+        if (!rows.length) return alert('Не удалось прочитать строки из файла!');
+        const tx = db.transaction(['products'], 'readwrite');
+        const st = tx.objectStore('products');
+        let count = 0;
+        rows.forEach((r, idx) => {
+          const name = r['Наименование'] || r['Название'] || '';
+          if (!name) return;
+          const prod = {
+            id: 'prod_' + Date.now() + '_' + idx,
+            sku: String(r['Артикул'] || 'SKU-' + idx).toUpperCase(),
+            name: String(name),
+            group: String(r['Группа'] || 'Посуда'),
+            origin: String(r['Происхождение'] || 'СВОЕ').toUpperCase().includes('ЗАКУП') ? 'ЗАКУПКА' : 'СВОЕ',
+            price: parseFloat(r['Цена'] || r['Розничная_цена'] || 0),
+            cost_price: parseFloat(r['Себестоимость'] || 0),
+            stock: parseInt(r['Остаток'] || r['Остаток_шт'] || 0),
+            barcode: String(r['Штрихкод'] || ''),
+            image: String(r['Ссылка_на_фото'] || '')
+          };
+          st.put(prod);
+          count++;
+        });
+        tx.oncomplete = () => {
+          renderProducts();
+          alert(`Успешно загружено товаров: ${count}`);
+        };
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function exportJsonBackup() {
+      const tx = db.transaction(['products', 'sales', 'employees'], 'readonly');
+      tx.objectStore('products').getAll().onsuccess = (pEv) => {
+        tx.objectStore('sales').getAll().onsuccess = (sEv) => {
+          tx.objectStore('employees').getAll().onsuccess = (eEv) => {
+            const data = {
+              exportedAt: new Date().toISOString(),
+              products: pEv.target.result || [],
+              sales: sEv.target.result || [],
+              employees: eEv.target.result || []
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `POS_Backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+          };
+        };
+      };
+    }
+
+    function importJsonBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          const tx = db.transaction(['products', 'sales', 'employees'], 'readwrite');
+          (data.products || []).forEach(p => tx.objectStore('products').put(p));
+          (data.sales || []).forEach(s => tx.objectStore('sales').put(s));
+          (data.employees || []).forEach(emp => tx.objectStore('employees').put(emp));
+          tx.oncomplete = () => {
+            renderProducts();
+            renderSales();
+            alert('База данных успешно восстановлена из JSON-бэкапа!');
+          };
+        } catch (err) {
+          alert('Ошибка чтения JSON файла!');
+        }
+      };
+      reader.readAsText(file);
+    }
+
     function downloadFile(content, filename) {
       const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
@@ -1410,7 +1949,7 @@
       a.click();
     }
 
-    // --- НАСТРОЙКИ SUPABASE ---
+    // --- 16. НАСТРОЙКИ SUPABASE ---
     function openCloudModal() {
       document.getElementById('supabaseUrlInput').value = localStorage.getItem('pos_sb_url') || '';
       document.getElementById('supabaseKeyInput').value = localStorage.getItem('pos_sb_key') || '';
@@ -1469,7 +2008,7 @@
     }
 
     function pullAllFromCloud(silent = false) {
-      if (!supabaseClient) return;
+      if (!supabaseClient || !db) return;
       supabaseClient.from('products').select('*').then(res => {
         if (!res.error && res.data && res.data.length > 0) {
           const tx = db.transaction(['products'], 'readwrite');
@@ -1489,7 +2028,7 @@
       if (!silent) alert('Каталог и чеки обновлены из облака!');
     }
 
-    // --- ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ---
+    // --- 17. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ---
     function switchTab(tab) {
       document.getElementById('viewCashier').classList.toggle('hidden', tab !== 'cashier');
       document.getElementById('viewCatalog').classList.toggle('hidden', tab !== 'catalog');
@@ -1500,17 +2039,8 @@
         b.className = `tab-btn flex flex-col items-center gap-1 ${active ? 'text-amber-800 font-bold' : 'text-stone-400 hover:text-stone-700'}`;
       });
       if (tab === 'reports') renderSales();
-    }
-
-    function toggleBarcodeScanner() {
-      const code = prompt('Введите или отсканируйте штрихкод:');
-      if (!code) return;
-      const tx = db.transaction(['products'], 'readonly');
-      tx.objectStore('products').getAll().onsuccess = (e) => {
-        const p = (e.target.result || []).find(it => it.barcode === code.trim() || it.sku === code.trim().toUpperCase());
-        if (p) addToCart(p.id);
-        else alert('Товар с таким кодом не найден!');
-      };
+      if (tab === 'catalog') renderProducts();
+      safeRenderIcons();
     }
   </script>
 </body>
