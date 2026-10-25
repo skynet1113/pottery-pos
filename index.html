@@ -9,8 +9,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Библиотека для живого сканирования штрихкодов камерой -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -28,16 +26,11 @@
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    /* Стили окна видоискателя камеры */
-    #scannerReader video {
-      border-radius: 12px;
-      object-fit: cover;
-    }
   </style>
 </head>
 <body class="text-stone-800 min-h-screen flex flex-col font-sans select-none pb-24">
 
-  <!-- АДАПТИВНАЯ ШАПКА -->
+  <!-- АДАПТИВНАЯ ШАПКА (ПОМЕЩАЕТСЯ И НА СМАРТФОНЕ, И НА ПК) -->
   <header class="bg-amber-900 text-amber-50 sticky top-0 z-30 shadow-md w-full">
     <div class="max-w-7xl mx-auto px-3 py-2 flex flex-wrap items-center justify-between gap-2">
       
@@ -59,31 +52,22 @@
         </button>
       </div>
 
-      <!-- Правая часть: Сканер + Облако + Блок + Корзина -->
+      <!-- Правая часть: Управление и Корзина -->
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        <!-- Кнопка сканера камеры -->
-        <button onclick="toggleBarcodeScanner()" title="Включить сканер камеры" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition">
-          <i data-lucide="scan-barcode" class="w-4 h-4"></i>
-        </button>
-
-        <!-- Блокировка -->
         <button onclick="lockScreen()" title="Заблокировать кассу" class="p-2 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-amber-200 border border-amber-700/40 transition">
           <i data-lucide="lock" class="w-4 h-4"></i>
         </button>
 
-        <!-- Статус облака -->
         <button id="cloudBtn" onclick="openCloudModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-950/50 hover:bg-amber-950 rounded-xl text-[11px] font-medium border border-amber-700/40 transition">
           <span id="cloudDot" class="w-2 h-2 rounded-full bg-stone-400"></span>
           <span id="cloudText" class="hidden md:inline">Офлайн</span>
         </button>
 
-        <!-- Переключатель роли -->
         <button id="roleToggleBtn" onclick="handleRoleToggle()" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition">
           <i data-lucide="shield" class="w-3.5 h-3.5"></i>
           <span id="roleToggleText">В кассу</span>
         </button>
 
-        <!-- Быстрая кнопка к корзине -->
         <button onclick="scrollToCart()" class="flex items-center gap-1 bg-amber-950/60 px-2.5 py-1.5 rounded-xl border border-amber-700/50 font-bold text-xs text-amber-300">
           <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
           <span id="headerCartTotal">0 ₽</span>
@@ -242,7 +226,7 @@
         </div>
       </div>
 
-      <!-- Кнопки экспорта -->
+      <!-- Кнопки экспорта для 1С и Excel -->
       <div class="flex flex-wrap gap-2">
         <button onclick="exportTo1C()" class="px-3.5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
           <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Выгрузка для 1С (CSV)
@@ -300,7 +284,7 @@
 
   </main>
 
-  <!-- НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ -->
+  <!-- НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (ВИДНА АДМИНИСТРАТОРУ) -->
   <nav id="adminBottomNav" class="bg-white border-t border-stone-200 fixed bottom-0 left-0 right-0 z-30 px-6 py-2 shadow-lg">
     <div class="max-w-md mx-auto flex justify-around">
       <button onclick="switchTab('cashier')" class="tab-btn flex flex-col items-center gap-1 text-amber-800 font-bold" data-tab="cashier">
@@ -317,33 +301,6 @@
       </button>
     </div>
   </nav>
-
-  <!-- МОДАЛЬНОЕ ОКНО: СКАНЕР ШТРИХКОДОВ С КАМЕРОЙ -->
-  <div id="scannerModal" class="hidden fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
-    <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
-      <div class="p-3 bg-amber-900 text-amber-50 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-          <i data-lucide="scan-barcode" class="w-4 h-4 text-amber-300"></i>
-          <span class="font-bold text-xs">Сканер штрихкода</span>
-        </div>
-        <button onclick="closeScannerModal()" class="text-amber-200 hover:text-white p-1">✕</button>
-      </div>
-
-      <div class="p-3 bg-black flex flex-col items-center justify-center relative min-h-[250px]">
-        <div id="scannerReader" class="w-full"></div>
-        <p class="text-[11px] text-stone-300 text-center mt-2">Наведите камеру на штрихкод товара</p>
-      </div>
-
-      <div class="p-3 bg-stone-50 border-t border-stone-200 flex gap-2">
-        <button onclick="manualBarcodeInput()" class="flex-1 py-2 rounded-xl bg-white border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-100 transition">
-          Ввести вручную
-        </button>
-        <button onclick="closeScannerModal()" class="py-2 px-4 rounded-xl bg-stone-200 text-stone-700 text-xs font-semibold hover:bg-stone-300 transition">
-          Отмена
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- МОДАЛЬНОЕ ОКНО: ТОВАР -->
   <div id="productModal" class="hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -514,7 +471,7 @@
     // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
     let db;
     let supabaseClient = null;
-    let currentRole = 'ADMIN';
+    let currentRole = 'ADMIN'; // По умолчанию для Владельца открыт режим Админа
     let currentEmployee = { id: 'emp_owner', name: 'Владелец', role: 'ADMIN', pin: '1234' };
     let currentMarket = 'Осенний Маркет Ремесел 2026';
     let cart = [];
@@ -523,8 +480,8 @@
     let currentSalesFilter = 'ALL';
     let selectedGroup = 'ALL';
     let selectedOrigin = 'ALL';
-    let html5QrScanner = null;
 
+    // Вспомогательные функции для совместимости со старыми и новыми чеками
     function getItemQty(item) {
       return Number(item.qty ?? item.quantity ?? item.count ?? 1);
     }
@@ -610,7 +567,7 @@
       { id: 'emp_ivan', name: 'Иван (Продавец)', role: 'CASHIER', pin: '2222' }
     ];
 
-    // --- ОТКРЫТИЕ INDEXEDDB ---
+    // --- ОТКРЫТИЕ БАЗЫ INDEXEDDB ---
     const req = indexedDB.open('PotteryPOS_MasterDB', 3);
     req.onupgradeneeded = (e) => {
       db = e.target.result;
@@ -700,7 +657,7 @@
         }).subscribe();
     }
 
-    // --- РОЛИ И PIN ---
+    // --- РОЛИ И PIN-КОДЫ ---
     function handleRoleToggle() {
       if (currentRole === 'CASHIER') {
         askPin('Вход администратора', 'Введите PIN владельца (по умолч. 1234)', (pin) => {
@@ -791,7 +748,7 @@
       };
     }
 
-    // --- ВЫСТАВКА ---
+    // --- ВЫСТАВКА / МАРКЕТ ---
     function openEventModal() {
       document.getElementById('eventInputName').value = currentMarket;
       document.getElementById('eventModal').classList.remove('hidden');
@@ -972,6 +929,7 @@
       const cost = cart.reduce((s, i) => s + ((i.cost_price || 0) * i.qty), 0);
       const now = new Date();
 
+      // Сохраняем и qty, и quantity для полной обратной совместимости
       const normalizedItems = cart.map(i => ({ ...i, qty: i.qty, quantity: i.qty }));
 
       const sale = {
@@ -1022,7 +980,7 @@
       };
     }
 
-    // --- ОШИБКИ И ВОЗВРАТЫ ---
+    // --- АННУЛИРОВАНИЕ ОШИБОК И ВОЗВРАТЫ ОТ КЛИЕНТА ---
     function handleCancelSale(saleId) {
       if (!confirm('Аннулировать этот чек как ОШИБОЧНЫЙ?\n\n• Изделия вернутся на остатки склада.\n• Сумма чека будет исключена из выручки кассы.\n• Чек останется в базе со статусом ОШИБКА.')) return;
       changeSaleStatus(saleId, 'CANCELLED', 'Ошибочная операция');
@@ -1050,6 +1008,7 @@
         sale.status_updated_at = new Date().toISOString();
         sStore.put(sale);
 
+        // Возврат остатков на склад (с учетом и qty, и старого quantity)
         const pTx = db.transaction(['products'], 'readwrite');
         const pStore = pTx.objectStore('products');
         (sale.items || []).forEach(item => {
@@ -1084,7 +1043,7 @@
       };
     }
 
-    // --- ОТЧЕТЫ И ЖУРНАЛ ЧЕКОВ ---
+    // --- ЕДИНЫЙ РАСЧЕТ ОТЧЕТОВ, СОТРУДНИКОВ И ЖУРНАЛА ЧЕКОВ ---
     function renderSales() {
       const tx = db.transaction(['sales', 'employees'], 'readonly');
       tx.objectStore('sales').getAll().onsuccess = (e) => {
@@ -1110,18 +1069,24 @@
           }
         });
 
+        // Карточки наверху:
+        // Если чек переведен в статус REFUNDED, он уже не входит в revCompleted,
+        // поэтому revCompleted — это уже чистая выручка активных продаж.
         document.getElementById('statNetRevenue').textContent = `${revCompleted} ₽`;
         document.getElementById('statRefunds').textContent = `-${revRefunded} ₽`;
         document.getElementById('statRefundsCount').textContent = `${countRefunded} чеков`;
         document.getElementById('statCancelledCount').textContent = `${countCancelled} чеков`;
         document.getElementById('statNetProfit').textContent = `${revCompleted - costCompleted} ₽`;
 
+        // Таблица «Продажи по сотрудникам» (сопоставление и по ID, и по Имени!)
         tx.objectStore('employees').getAll().onsuccess = (empEv) => {
           const staff = empEv.target.result || [];
           const statsBody = document.getElementById('employeeStatsBody');
+
           const norm = (str) => (str || '').trim().toLowerCase();
 
           statsBody.innerHTML = staff.map(emp => {
+            // Ищем чеки, где совпадает либо ID сотрудника, либо его Имя (например, "Владелец")
             const empSales = sales.filter(s => 
               (s.employee_id && s.employee_id === emp.id) || 
               (s.employee_name && norm(s.employee_name) === norm(emp.name))
@@ -1130,6 +1095,7 @@
             const completed = empSales.filter(s => (s.status || 'COMPLETED') === 'COMPLETED');
             const refunded = empSales.filter(s => s.status === 'REFUNDED');
             const cancelled = empSales.filter(s => s.status === 'CANCELLED');
+
             const revenue = completed.reduce((acc, s) => acc + (Number(s.final_total) || 0), 0);
 
             return `
@@ -1144,6 +1110,7 @@
           }).join('');
         };
 
+        // Фильтрация журнала чеков
         const filtered = sales.filter(s => {
           const st = s.status || 'COMPLETED';
           if (currentSalesFilter === 'ALL') return true;
@@ -1176,6 +1143,7 @@
             priceClass = 'text-stone-400 line-through';
           }
 
+          // Читаем и qty, и старое поле quantity, чтобы никогда не было (×undefined)
           const itemsStr = (s.items || []).map(i => `${i.name} (×${getItemQty(i)})`).join(', ');
 
           return `
@@ -1228,83 +1196,7 @@
       renderSales();
     }
 
-    // --- НАСТОЯЩИЙ СКАНЕР ШТРИХКОДОВ С КАМЕРОЙ ---
-    function toggleBarcodeScanner() {
-      openScannerModal();
-    }
-
-    function openScannerModal() {
-      document.getElementById('scannerModal').classList.remove('hidden');
-      if (typeof Html5Qrcode === 'undefined') {
-        alert('Библиотека сканера еще загружается...');
-        return;
-      }
-
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("scannerReader");
-      }
-
-      const config = {
-        fps: 15,
-        qrbox: { width: 260, height: 180 },
-        aspectRatio: 1.0
-      };
-
-      html5QrScanner.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          // Успешно считан штрихкод
-          if (navigator.vibrate) navigator.vibrate(100);
-          closeScannerModal();
-          processScannedCode(decodedText);
-        },
-        () => {
-          // Ошибки каждого кадра игнорируются во время поиска
-        }
-      ).catch(err => {
-        console.warn("Камера не запущена:", err);
-        // Если запрещен доступ к камере или нет HTTPS
-        closeScannerModal();
-        manualBarcodeInput('Не удалось открыть камеру (проверьте разрешение браузера). Введите код вручную:');
-      });
-    }
-
-    function closeScannerModal() {
-      if (html5QrScanner) {
-        html5QrScanner.stop().then(() => {
-          document.getElementById('scannerModal').classList.add('hidden');
-        }).catch(() => {
-          document.getElementById('scannerModal').classList.add('hidden');
-        });
-      } else {
-        document.getElementById('scannerModal').classList.add('hidden');
-      }
-    }
-
-    function manualBarcodeInput(customPrompt) {
-      closeScannerModal();
-      const code = prompt(customPrompt || 'Введите штрихкод или артикул товара:');
-      if (code) processScannedCode(code);
-    }
-
-    function processScannedCode(rawCode) {
-      const q = rawCode.trim().toUpperCase();
-      const tx = db.transaction(['products'], 'readonly');
-      tx.objectStore('products').getAll().onsuccess = (e) => {
-        const found = (e.target.result || []).find(p => 
-          (p.barcode && p.barcode.trim().toUpperCase() === q) || 
-          (p.sku && p.sku.trim().toUpperCase() === q)
-        );
-        if (found) {
-          addToCart(found.id);
-        } else {
-          alert(`Товар со штрихкодом "${rawCode}" не найден в каталоге!`);
-        }
-      };
-    }
-
-    // --- ТОВАР (ДОБАВИТЬ/ИЗМЕНИТЬ) ---
+    // --- МОДАЛКА ТОВАРА ---
     function openProductModal(prodId = null) {
       document.getElementById('prodEditId').value = prodId || '';
       document.getElementById('productModalTitle').textContent = prodId ? 'Редактирование товара' : 'Новый товар';
@@ -1377,7 +1269,7 @@
       };
     }
 
-    // --- ПАКЕТНОЕ ФОТО ---
+    // --- ПАКЕТНАЯ ЗАГРУЗКА ФОТО ---
     function handleBatchPhotos(event) {
       const files = Array.from(event.target.files);
       if (!files.length) return;
@@ -1419,13 +1311,12 @@
         else if (h > maxSide) { w = Math.round((w * maxSide) / h); h = maxSide; }
         const cvs = document.createElement('canvas');
         cvs.width = w; cvs.height = h;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
+        cvs.getContext('2d').drawImage(img, 0, 0, w, h);
         callback(cvs.toDataURL('image/jpeg', 0.8));
       };
     }
 
-    // --- ШТАТ ---
+    // --- ШТАТ СОТРУДНИКОВ ---
     function openStaffModal() {
       const tx = db.transaction(['employees'], 'readonly');
       tx.objectStore('employees').getAll().onsuccess = (e) => {
@@ -1477,7 +1368,7 @@
       };
     }
 
-    // --- 1C И CSV ---
+    // --- ВЫГРУЗКА 1С И CSV ---
     function exportTo1C() {
       const tx = db.transaction(['sales'], 'readonly');
       tx.objectStore('sales').getAll().onsuccess = (e) => {
@@ -1519,7 +1410,7 @@
       a.click();
     }
 
-    // --- SUPABASE НАСТРОЙКИ ---
+    // --- НАСТРОЙКИ SUPABASE ---
     function openCloudModal() {
       document.getElementById('supabaseUrlInput').value = localStorage.getItem('pos_sb_url') || '';
       document.getElementById('supabaseKeyInput').value = localStorage.getItem('pos_sb_key') || '';
@@ -1598,6 +1489,7 @@
       if (!silent) alert('Каталог и чеки обновлены из облака!');
     }
 
+    // --- ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ---
     function switchTab(tab) {
       document.getElementById('viewCashier').classList.toggle('hidden', tab !== 'cashier');
       document.getElementById('viewCatalog').classList.toggle('hidden', tab !== 'catalog');
@@ -1608,6 +1500,17 @@
         b.className = `tab-btn flex flex-col items-center gap-1 ${active ? 'text-amber-800 font-bold' : 'text-stone-400 hover:text-stone-700'}`;
       });
       if (tab === 'reports') renderSales();
+    }
+
+    function toggleBarcodeScanner() {
+      const code = prompt('Введите или отсканируйте штрихкод:');
+      if (!code) return;
+      const tx = db.transaction(['products'], 'readonly');
+      tx.objectStore('products').getAll().onsuccess = (e) => {
+        const p = (e.target.result || []).find(it => it.barcode === code.trim() || it.sku === code.trim().toUpperCase());
+        if (p) addToCart(p.id);
+        else alert('Товар с таким кодом не найден!');
+      };
     }
   </script>
 </body>
