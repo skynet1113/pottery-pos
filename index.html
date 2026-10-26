@@ -1056,6 +1056,7 @@
         grid.innerHTML = filtered.map(p => {
           const originText = (p.origin === 'BUY' || p.origin === 'ЗАКУПКА') ? 'ЗАКУПКА' : 'СВОЕ';
           const inCartItem = cart.find(c => c.id === p.id);
+          const availableStock = Math.max(0, (Number(p.stock) || 0) - (inCartItem ? inCartItem.qty : 0));
           const inCartBadge = inCartItem ? `<span class="absolute top-1.5 right-1.5 bg-amber-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">+${inCartItem.qty} в чеке</span>` : '';
 
           return `
@@ -1065,7 +1066,7 @@
                   <img src="${p.image || fallbackImg}" class="w-full h-28 object-cover rounded-xl mb-2 bg-stone-100" onerror="this.src='${fallbackImg}'">
                   <span class="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${originText === 'СВОЕ' ? 'bg-amber-900/85 text-white' : 'bg-stone-800/85 text-white'}">${originText}</span>
                   ${inCartBadge}
-                  <span class="absolute bottom-3 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white/95 text-stone-700 shadow-sm">Осталось: ${p.stock}</span>
+                  <span class="absolute bottom-3 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${availableStock === 0 ? 'bg-red-600 text-white' : 'bg-white/95 text-stone-700'} shadow-sm">Осталось: ${availableStock}</span>
                 </div>
                 <p class="text-[10px] text-stone-400 font-mono truncate">${p.sku || ''}</p>
                 <h4 class="text-xs font-bold text-stone-800 line-clamp-2 leading-tight mt-0.5">${p.name}</h4>
